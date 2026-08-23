@@ -35,3 +35,22 @@ fn strategy_is_usable_through_the_public_api() {
     assert_eq!(result.explored_order, vec![(0, 0), (0, 1), (0, 2)]);
     assert_path_connects(&path, (0, 0), (0, 2));
 }
+
+#[test]
+fn basic_dfs_implementation() {
+    let algorithm: Box<dyn PathfindingAlgorithm> =
+        Box::new(path_finder_visualizer::algorithms::DFS);
+    let grid = empty_grid(3, 3);
+    let start = (0, 0);
+    let end = (2, 2);
+
+    let result = algorithm.find_path(start, end, &grid);
+
+    assert_eq!(result.explored_order.first(), Some(&start));
+    assert!(result.explored_order.contains(&end));
+
+    let path = result
+        .path
+        .expect("DFS should find a path across an empty grid");
+    assert_path_connects(&path, start, end);
+}
