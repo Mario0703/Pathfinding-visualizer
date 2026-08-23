@@ -1,3 +1,4 @@
+use crate::CellState;
 use eframe::egui;
 
 pub fn run() -> eframe::Result {
@@ -15,15 +16,6 @@ pub fn run() -> eframe::Result {
         Box::new(|_cc| Ok(Box::new(PathFinderVisualizerApp::default()))),
     )
 }
-#[derive(Clone, Copy, PartialEq)]
-enum CellState {
-    Explored,
-    Unexplored,
-    Wall,
-    Start,
-    End,
-}
-
 #[derive(Clone, Copy, PartialEq)]
 enum DrawingTool {
     DrawWall,
@@ -62,7 +54,6 @@ impl Default for PathFinderVisualizerApp {
 impl eframe::App for PathFinderVisualizerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let min_width = 50.0;
-        let min_height = 50.0;
         let cell_width = 30.0;
         let cell_height = 30.0;
         let horizontal_gap = -9.0;
@@ -78,9 +69,10 @@ impl eframe::App for PathFinderVisualizerApp {
                 for row in 0..self.rows {
                     for column in 0..self.columns {
                         let cell_size = egui::vec2(cell_width, cell_height);
-                        let (rect, response) = ui.allocate_exact_size(cell_size, egui::Sense::click_and_drag());
+                        let (rect, response) =
+                            ui.allocate_exact_size(cell_size, egui::Sense::click_and_drag());
                         let (primary_down, pointer_over_cell) = ui.input(|input| {
-                        let pointer_over_cell = input
+                            let pointer_over_cell = input
                                 .pointer
                                 .hover_pos()
                                 .is_some_and(|position| rect.contains(position));
@@ -180,7 +172,7 @@ impl eframe::App for PathFinderVisualizerApp {
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawWall, "Walls");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::EraseWall, "Eraser");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawStart, "Start");
-            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd,   "End");
+            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd, "End");
         });
     }
 }
