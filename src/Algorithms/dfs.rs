@@ -20,7 +20,7 @@ impl PathfindingAlgorithm for DFS {
         _end: Position,
         _graph: &[Vec<CellState>],
     ) -> SearchResult {
-                SearchResult {
+        SearchResult {
             explored_order: Vec::new(),
             path: None,
         }
@@ -41,10 +41,10 @@ pub fn get_neighbors(position: Position, graph: &[Vec<CellState>]) -> Vec<Positi
 
     for neighbor in possible_neighbors {
         if let (Some(row), Some(column)) = neighbor {
-            if row < graph.len()
-                && column < graph[row].len()
-                && graph[row][column] != CellState::Wall
-            {
+            let row_is_in_bounds = row < graph.len();
+            let column_is_in_bounds = row_is_in_bounds && column < graph[row].len();
+
+            if column_is_in_bounds && graph[row][column] != CellState::Wall {
                 neighbors.push((row, column));
             }
         }
