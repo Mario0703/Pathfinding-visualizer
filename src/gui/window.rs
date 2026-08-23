@@ -19,12 +19,16 @@ pub fn run() -> eframe::Result {
 enum CellState {
     Explored,
     Unexplored,
+    Start,
+    End,
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum DrawingTool {
     DrawWall,
     EraseWall,
+    DrawStart,
+    DrawEnd,
 }
 
 struct PathFinderVisualizerApp {
@@ -79,7 +83,8 @@ impl eframe::App for PathFinderVisualizerApp {
                         let (rect, response) =
                             ui.allocate_exact_size(cell_size, egui::Sense::hover());
 
-                        ui.painter().rect_filled(rect, CELL_CORNER_RADIUS, CELL_BACKGROUND_COLOR);
+                        ui.painter()
+                            .rect_filled(rect, CELL_CORNER_RADIUS, CELL_BACKGROUND_COLOR);
 
                         ui.painter().rect_stroke(
                             rect,
@@ -132,6 +137,8 @@ impl eframe::App for PathFinderVisualizerApp {
             ui.label("Drawing tool:");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawWall, "Walls");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::EraseWall, "Eraser");
+            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawStart, "Start");
+            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd, "End");
         });
     }
 }
