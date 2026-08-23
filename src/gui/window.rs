@@ -19,6 +19,7 @@ pub fn run() -> eframe::Result {
 enum CellState {
     Explored,
     Unexplored,
+    Wall,
     Start,
     End,
 }
@@ -37,24 +38,23 @@ struct PathFinderVisualizerApp {
     selected_rows: String,
     selected_columns: String,
     matrix: Vec<Vec<CellState>>,
-    _status: String,
-    Algorithm: String,
+    algorithm: String,
     drawing_tool: DrawingTool,
-    is_drawing: bool,
 }
 
 impl Default for PathFinderVisualizerApp {
     fn default() -> Self {
+        let rows = 10;
+        let columns = 10;
+
         Self {
-            rows: 10,
-            columns: 10,
-            selected_rows: "10".to_owned(),
-            selected_columns: "10".to_owned(),
-            matrix: Vec::new(),
-            _status: String::from("Lets get started!"),
-            Algorithm: String::from("Select Algorithm"),
+            rows,
+            columns,
+            selected_rows: rows.to_string(),
+            selected_columns: columns.to_string(),
+            matrix: vec![vec![CellState::Unexplored; columns]; rows],
+            algorithm: String::from("Select Algorithm"),
             drawing_tool: DrawingTool::DrawWall,
-            is_drawing: false,
         }
     }
 }
@@ -70,7 +70,6 @@ impl eframe::App for PathFinderVisualizerApp {
         let path_finding_algorithms = ["Dijkstra", "A*", "BFS", "DFS"];
         const CELL_CORNER_RADIUS: f32 = 0.0;
         const CELL_BORDER_WIDTH: f32 = 1.0;
-        const CELL_BACKGROUND_COLOR: egui::Color32 = egui::Color32::WHITE;
         const CELL_BORDER_COLOR: egui::Color32 = egui::Color32::BLACK;
 
         egui::Grid::new("pathfinding_grid")
@@ -79,12 +78,56 @@ impl eframe::App for PathFinderVisualizerApp {
                 for row in 0..self.rows {
                     for column in 0..self.columns {
                         let cell_size = egui::vec2(cell_width, cell_height);
+                        let (rect, response) = ui.allocate_exact_size(cell_size, egui::Sense::click_and_drag());
+                        let (primary_down, pointer_over_cell) = ui.input(|input| {
+                        let pointer_over_cell = input
+                                .pointer
+                                .hover_pos()
+                                .is_some_and(|position| rect.contains(position));
 
-                        let (rect, response) =
-                            ui.allocate_exact_size(cell_size, egui::Sense::hover());
+                            (input.pointer.primary_down(), pointer_over_cell)
+                        });
+
+                        match self.drawing_tool {
+                            DrawingTool::DrawWall if primary_down && pointer_over_cell => {
+                                self.matrix[row][column] = CellState::Wall;
+                            }
+                            DrawingTool::EraseWall if primary_down && pointer_over_cell => {
+                                self.matrix[row][column] = CellState::Unexplored;
+                            }
+                            DrawingTool::DrawStart if response.clicked() => {
+                                for row in 0..self.rows {
+                                    for column in 0..self.columns {
+                                        if self.matrix[row][column] == CellState::Start {
+                                            self.matrix[row][column] = CellState::Unexplored;
+                                        }
+                                    }
+                                }
+                                self.matrix[row][column] = CellState::Start;
+                            }
+                            DrawingTool::DrawEnd if response.clicked() => {
+                                for row in 0..self.rows {
+                                    for column in 0..self.columns {
+                                        if self.matrix[row][column] == CellState::End {
+                                            self.matrix[row][column] = CellState::Unexplored;
+                                        }
+                                    }
+                                }
+                                self.matrix[row][column] = CellState::End;
+                            }
+                            _ => {}
+                        }
+
+                        let cell_color = match self.matrix[row][column] {
+                            CellState::Explored => egui::Color32::LIGHT_BLUE,
+                            CellState::Unexplored => egui::Color32::WHITE,
+                            CellState::Wall => egui::Color32::BLACK,
+                            CellState::Start => egui::Color32::GREEN,
+                            CellState::End => egui::Color32::RED,
+                        };
 
                         ui.painter()
-                            .rect_filled(rect, CELL_CORNER_RADIUS, CELL_BACKGROUND_COLOR);
+                            .rect_filled(rect, CELL_CORNER_RADIUS, cell_color);
 
                         ui.painter().rect_stroke(
                             rect,
@@ -92,8 +135,6 @@ impl eframe::App for PathFinderVisualizerApp {
                             egui::Stroke::new(CELL_BORDER_WIDTH, CELL_BORDER_COLOR),
                             egui::StrokeKind::Inside,
                         );
-
-                        response.on_hover_text(format!("Row: {}, Column: {}", row, column));
                     }
 
                     ui.end_row();
@@ -128,17 +169,18 @@ impl eframe::App for PathFinderVisualizerApp {
                 .show_ui(ui, |ui| {
                     for algorithm in path_finding_algorithms.iter() {
                         ui.selectable_value(
-                            &mut self.Algorithm,
+                            &mut self.algorithm,
                             algorithm.to_string(),
                             algorithm.to_string(),
                         );
                     }
                 });
+
             ui.label("Drawing tool:");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawWall, "Walls");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::EraseWall, "Eraser");
             ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawStart, "Start");
-            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd, "End");
+            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd,   "End");
         });
     }
 }
