@@ -5,6 +5,7 @@ pub enum CellState {
     Wall,
     Start,
     End,
+    Path,
 }
 
 pub type Grid = Vec<Vec<CellState>>;
