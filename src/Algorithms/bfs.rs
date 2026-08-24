@@ -18,7 +18,8 @@ impl PathfindingAlgorithm for BFS {
     fn find_path(&self, start: Position, end: Position, graph: &[Vec<CellState>]) -> SearchResult {
         let mut queue = VecDeque::new();
         let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
-        let mut parents: Vec<Vec<Option<Position>>> = graph.iter().map(|row| vec![None; row.len()]).collect();
+        let mut parents: Vec<Vec<Option<Position>>> =
+            graph.iter().map(|row| vec![None; row.len()]).collect();
         let mut explored_order = Vec::new();
 
         visited[start.0][start.1] = true;
