@@ -31,19 +31,18 @@ impl PathfindingAlgorithm for Dijkstra {
             let Reverse((current_distance, current)) = queue.pop().unwrap();
 
             if visited[current.0][current.1] {
-                continue;
+                continue; // Skip already visited nodes
             }
 
-            visited[current.0][current.1] = true;
-            explored_order.push(current);
+            visited[current.0][current.1] = true; // Mark the current node as visited
+            explored_order.push(current); // We have explored this node, so we add it to the explored order
 
-            if current == end {
+            if current == end { // we are at the end, build path from end to start using parents, reverse path to get final path as we are starting from the end
                 let mut path = vec![end];
                 let mut position = end;
 
-                while position != start {
-                    position =
-                        parents[position.0][position.1].expect("reached node should have a parent");
+                while position != start { // while we have not reached the start, keep going up the parents to build the path
+                    position = parents[position.0][position.1].expect("reached node should have a parent");
                     path.push(position);
                 }
 
@@ -56,11 +55,11 @@ impl PathfindingAlgorithm for Dijkstra {
             }
 
             for neighbor in get_neighbors(current, graph) {
-                if visited[neighbor.0][neighbor.1] {
+                if visited[neighbor.0][neighbor.1] { // Skip already visited neighbors
                     continue;
                 }
-
-                let alternative_distance = current_distance + 1;
+                let distance_to_neighbor = 1; 
+                let alternative_distance = current_distance + distance_to_neighbor; 
 
                 if alternative_distance < distances[neighbor.0][neighbor.1] {
                     distances[neighbor.0][neighbor.1] = alternative_distance;
