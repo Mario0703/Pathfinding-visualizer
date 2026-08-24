@@ -1,9 +1,7 @@
 use crate::CellState;
-use crate::algorithms::{DFS, PathfindingAlgorithm, Position};
+use crate::algorithms::{BFS, DFS, PathfindingAlgorithm, Position};
+use crate::gui::animations::SearchAnimation;
 use eframe::egui;
-use std::time::{Duration, Instant};
-
-const PATH_ANIMATION_DELAY: Duration = Duration::from_millis(75);
 
 pub fn run() -> eframe::Result {
     let height = 800.0;
@@ -36,11 +34,7 @@ struct PathFinderVisualizerApp {
     matrix: Vec<Vec<CellState>>,
     algorithm: String,
     drawing_tool: DrawingTool,
-    explored_animation: Vec<Position>,
-    explored_animation_index: usize,
-    path_animation: Vec<Position>,
-    path_animation_index: usize,
-    next_animation_step: Option<Instant>,
+    animation: Option<SearchAnimation>,
 }
 
 impl Default for PathFinderVisualizerApp {
@@ -56,26 +50,23 @@ impl Default for PathFinderVisualizerApp {
             matrix: vec![vec![CellState::Unexplored; columns]; rows],
             algorithm: String::from("Select Algorithm"),
             drawing_tool: DrawingTool::DrawWall,
-            explored_animation: Vec::new(),
-            explored_animation_index: 0,
-            path_animation: Vec::new(),
-            path_animation_index: 0,
-            next_animation_step: None,
+            animation: None,
         }
     }
 }
 
 impl eframe::App for PathFinderVisualizerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        show_next_dfs_animation_cell(
-            &self.explored_animation,
-            &mut self.explored_animation_index,
-            &self.path_animation,
-            &mut self.path_animation_index,
-            &mut self.next_animation_step,
-            &mut self.matrix,
-            ui.ctx(),
-        );
+        let animation_finished = if let Some(animation) = &mut self.animation {
+            animation.update(&mut self.matrix, ui.ctx());
+            animation.is_finished()
+        } else {
+            false
+        };
+
+        if animation_finished {
+            self.animation = None;
+        }
 
         let min_width = 50.0;
         let cell_width = 30.0;
@@ -177,13 +168,8 @@ impl eframe::App for PathFinderVisualizerApp {
                 ) {
                     self.rows = rows;
                     self.columns = columns;
-
                     self.matrix = vec![vec![CellState::Unexplored; columns]; rows];
-                    self.explored_animation.clear();
-                    self.explored_animation_index = 0;
-                    self.path_animation.clear();
-                    self.path_animation_index = 0;
-                    self.next_animation_step = None;
+                    self.animation = None;
                 }
             }
             egui::ComboBox::from_label("Select Algorithm")
@@ -198,15 +184,16 @@ impl eframe::App for PathFinderVisualizerApp {
                 let end = find_cell(&self.matrix, CellState::End);
 
                 if let (Some(start), Some(end)) = (start, end) {
-                    if self.algorithm == "DFS" {
-                        clear_previous_search(&mut self.matrix);
-                        let result = DFS.find_path(start, end, &self.matrix);
+                    clear_previous_search(&mut self.matrix);
 
-                        self.explored_animation = result.explored_order;
-                        self.explored_animation_index = 0;
-                        self.path_animation = result.path.unwrap_or_default();
-                        self.path_animation_index = 0;
-                        self.next_animation_step = Some(Instant::now());
+                    let result = match self.algorithm.as_str() {
+                        "DFS" => Some(DFS.find_path(start, end, &self.matrix)),
+                        "BFS" => Some(BFS.find_path(start, end, &self.matrix)),
+                        _ => None,
+                    };
+
+                    if let Some(result) = result {
+                        self.animation = Some(SearchAnimation::new(result));
                         ui.ctx().request_repaint();
                     }
                 }
@@ -241,48 +228,4 @@ fn clear_previous_search(grid: &mut [Vec<CellState>]) {
             }
         }
     }
-}
-
-fn show_next_dfs_animation_cell(
-    explored: &[Position],
-    explored_index: &mut usize,
-    path: &[Position],
-    path_index: &mut usize,
-    next_step: &mut Option<Instant>,
-    grid: &mut [Vec<CellState>],
-    ctx: &egui::Context,
-) {
-    if *explored_index >= explored.len() && *path_index >= path.len() {
-        *next_step = None;
-        return;
-    }
-
-    let now = Instant::now();
-    let scheduled_step = next_step.get_or_insert(now);
-
-    if now < *scheduled_step {
-        ctx.request_repaint_after(*scheduled_step - now);
-        return;
-    }
-
-    if *explored_index < explored.len() {
-        let (row, column) = explored[*explored_index];
-
-        if !matches!(grid[row][column], CellState::Start | CellState::End) {
-            grid[row][column] = CellState::Explored;
-        }
-
-        *explored_index += 1;
-    } else {
-        let (row, column) = path[*path_index];
-
-        if !matches!(grid[row][column], CellState::Start | CellState::End) {
-            grid[row][column] = CellState::Path;
-        }
-
-        *path_index += 1;
-    }
-
-    *next_step = Some(now + PATH_ANIMATION_DELAY);
-    ctx.request_repaint_after(PATH_ANIMATION_DELAY);
 }
