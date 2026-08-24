@@ -2,10 +2,16 @@ use crate::CellState;
 use crate::algorithms::{BFS, DFS, Dijkstra, PathfindingAlgorithm, Position};
 use crate::gui::animations::SearchAnimation;
 use eframe::egui;
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 const COST_5_COLOR: egui::Color32 = egui::Color32::from_rgb(190, 220, 120);
 const COST_10_COLOR: egui::Color32 = egui::Color32::from_rgb(210, 155, 80);
 const COST_15_COLOR: egui::Color32 = egui::Color32::from_rgb(145, 95, 60);
+const PLACEMENT_ANIMATION_DURATION: Duration = Duration::from_millis(220);
+const PLACEMENT_REPAINT_INTERVAL: Duration = Duration::from_millis(16);
 
 pub fn run() -> eframe::Result {
     let height = 800.0;
@@ -31,6 +37,34 @@ enum DrawingTool {
     DrawEnd,
 }
 
+#[derive(Clone, Copy)]
+enum PlacementAnimationKind {
+    Wall,
+    Weight,
+    Start,
+    End,
+}
+
+struct PlacementAnimation {
+    kind: PlacementAnimationKind,
+    started_at: Instant,
+}
+
+impl PlacementAnimation {
+    fn new(kind: PlacementAnimationKind) -> Self {
+        Self {
+            kind,
+            started_at: Instant::now(),
+        }
+    }
+
+    fn progress(&self, now: Instant) -> f32 {
+        (now.duration_since(self.started_at).as_secs_f32()
+            / PLACEMENT_ANIMATION_DURATION.as_secs_f32())
+        .clamp(0.0, 1.0)
+    }
+}
+
 struct PathFinderVisualizerApp {
     rows: usize,
     columns: usize,
@@ -41,6 +75,7 @@ struct PathFinderVisualizerApp {
     algorithm: String,
     drawing_tool: DrawingTool,
     animation: Option<SearchAnimation>,
+    placement_animations: HashMap<Position, PlacementAnimation>,
 }
 
 impl Default for PathFinderVisualizerApp {
@@ -58,6 +93,7 @@ impl Default for PathFinderVisualizerApp {
             algorithm: String::from("Select Algorithm"),
             drawing_tool: DrawingTool::DrawWall,
             animation: None,
+            placement_animations: HashMap::new(),
         }
     }
 }
@@ -74,6 +110,10 @@ impl eframe::App for PathFinderVisualizerApp {
         if animation_finished {
             self.animation = None;
         }
+
+        let animation_time = Instant::now();
+        self.placement_animations
+            .retain(|_, animation| animation.progress(animation_time) < 1.0);
 
         if self.algorithm != "Dijkstra" && matches!(self.drawing_tool, DrawingTool::DrawWeight(_)) {
             self.drawing_tool = DrawingTool::DrawWall;
@@ -108,44 +148,76 @@ impl eframe::App for PathFinderVisualizerApp {
 
                         match self.drawing_tool {
                             DrawingTool::DrawWall if primary_down && pointer_over_cell => {
+                                if self.matrix[row][column] != CellState::Wall {
+                                    self.placement_animations.insert(
+                                        (row, column),
+                                        PlacementAnimation::new(PlacementAnimationKind::Wall),
+                                    );
+                                }
                                 self.matrix[row][column] = CellState::Wall;
                                 self.weights[row][column] = 1;
                             }
                             DrawingTool::DrawWeight(weight)
                                 if primary_down && pointer_over_cell =>
                             {
-                                self.weights[row][column] = weight;
-
-                                if !matches!(
+                                let can_draw_weight = !matches!(
                                     self.matrix[row][column],
                                     CellState::Start | CellState::End
-                                ) {
+                                );
+
+                                if can_draw_weight
+                                    && (self.weights[row][column] != weight
+                                        || self.matrix[row][column] != CellState::Unexplored)
+                                {
+                                    self.placement_animations.insert(
+                                        (row, column),
+                                        PlacementAnimation::new(PlacementAnimationKind::Weight),
+                                    );
+                                }
+
+                                if can_draw_weight {
+                                    self.weights[row][column] = weight;
                                     self.matrix[row][column] = CellState::Unexplored;
                                 }
                             }
                             DrawingTool::EraseWall if primary_down && pointer_over_cell => {
+                                self.placement_animations.remove(&(row, column));
                                 self.matrix[row][column] = CellState::Unexplored;
                                 self.weights[row][column] = 1;
                             }
-                            DrawingTool::DrawStart if response.clicked() => {
+                            DrawingTool::DrawStart
+                                if response.clicked() && self.weights[row][column] == 1 =>
+                            {
                                 for row in 0..self.rows {
                                     for column in 0..self.columns {
                                         if self.matrix[row][column] == CellState::Start {
                                             self.matrix[row][column] = CellState::Unexplored;
+                                            self.placement_animations.remove(&(row, column));
                                         }
                                     }
                                 }
                                 self.matrix[row][column] = CellState::Start;
+                                self.placement_animations.insert(
+                                    (row, column),
+                                    PlacementAnimation::new(PlacementAnimationKind::Start),
+                                );
                             }
-                            DrawingTool::DrawEnd if response.clicked() => {
+                            DrawingTool::DrawEnd
+                                if response.clicked() && self.weights[row][column] == 1 =>
+                            {
                                 for row in 0..self.rows {
                                     for column in 0..self.columns {
                                         if self.matrix[row][column] == CellState::End {
                                             self.matrix[row][column] = CellState::Unexplored;
+                                            self.placement_animations.remove(&(row, column));
                                         }
                                     }
                                 }
                                 self.matrix[row][column] = CellState::End;
+                                self.placement_animations.insert(
+                                    (row, column),
+                                    PlacementAnimation::new(PlacementAnimationKind::End),
+                                );
                             }
                             _ => {}
                         }
@@ -161,8 +233,65 @@ impl eframe::App for PathFinderVisualizerApp {
                             CellState::Path => egui::Color32::YELLOW,
                         };
 
-                        ui.painter()
-                            .rect_filled(rect, CELL_CORNER_RADIUS, cell_color);
+                        match self.placement_animations.get(&(row, column)) {
+                            Some(animation)
+                                if matches!(animation.kind, PlacementAnimationKind::Wall)
+                                    && cell_state == CellState::Wall =>
+                            {
+                                let progress = animation.progress(animation_time);
+                                let eased_progress = 1.0 - (1.0 - progress).powi(3);
+                                let gray = (255.0 * (1.0 - eased_progress)).round() as u8;
+                                ui.painter().rect_filled(
+                                    rect,
+                                    CELL_CORNER_RADIUS,
+                                    egui::Color32::from_gray(gray),
+                                );
+                            }
+                            Some(animation)
+                                if matches!(
+                                    animation.kind,
+                                    PlacementAnimationKind::Weight
+                                        | PlacementAnimationKind::Start
+                                        | PlacementAnimationKind::End
+                                ) && (matches!(
+                                    animation.kind,
+                                    PlacementAnimationKind::Weight
+                                ) && cell_state == CellState::Unexplored
+                                    || matches!(
+                                        animation.kind,
+                                        PlacementAnimationKind::Start | PlacementAnimationKind::End
+                                    ) && matches!(
+                                        cell_state,
+                                        CellState::Start | CellState::End
+                                    )) =>
+                            {
+                                let background_color =
+                                    if matches!(animation.kind, PlacementAnimationKind::Weight) {
+                                        egui::Color32::WHITE
+                                    } else {
+                                        weight_color(weight)
+                                    };
+                                ui.painter().rect_filled(
+                                    rect,
+                                    CELL_CORNER_RADIUS,
+                                    background_color,
+                                );
+
+                                let progress = animation.progress(animation_time);
+                                let eased_progress = 1.0 - (1.0 - progress).powi(3);
+                                let inset =
+                                    rect.width().min(rect.height()) * (1.0 - eased_progress) * 0.5;
+                                ui.painter().rect_filled(
+                                    rect.shrink(inset),
+                                    CELL_CORNER_RADIUS,
+                                    cell_color,
+                                );
+                            }
+                            _ => {
+                                ui.painter()
+                                    .rect_filled(rect, CELL_CORNER_RADIUS, cell_color);
+                            }
+                        }
 
                         ui.painter().rect_stroke(
                             rect,
@@ -192,110 +321,164 @@ impl eframe::App for PathFinderVisualizerApp {
                     ui.end_row();
                 }
             });
-        ui.horizontal(|ui| {
-            ui.add(
-                egui::TextEdit::singleline(&mut self.selected_rows)
-                    .desired_width(min_width)
-                    .hint_text("Rows"),
-            );
 
-            ui.add(
-                egui::TextEdit::singleline(&mut self.selected_columns)
-                    .desired_width(min_width)
-                    .hint_text("Columns"),
-            );
+        if !self.placement_animations.is_empty() {
+            ui.ctx().request_repaint_after(PLACEMENT_REPAINT_INTERVAL);
+        }
 
-            if ui.button("Create Grid").clicked() {
-                if let (Ok(rows), Ok(columns)) = (
-                    self.selected_rows.trim().parse::<usize>(),
-                    self.selected_columns.trim().parse::<usize>(),
-                ) {
-                    self.rows = rows;
-                    self.columns = columns;
-                    self.matrix = vec![vec![CellState::Unexplored; columns]; rows];
-                    self.weights = vec![vec![1; columns]; rows];
+        egui::Grid::new("controls_grid")
+            .spacing([12.0, 8.0])
+            .show(ui, |ui| {
+                ui.label("Rows:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.selected_rows)
+                        .desired_width(min_width)
+                        .hint_text("Rows"),
+                );
+
+                ui.label("Columns:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.selected_columns)
+                        .desired_width(min_width)
+                        .hint_text("Columns"),
+                );
+
+                if ui.button("Create Grid").clicked() {
+                    if let (Ok(rows), Ok(columns)) = (
+                        self.selected_rows.trim().parse::<usize>(),
+                        self.selected_columns.trim().parse::<usize>(),
+                    ) {
+                        self.rows = rows;
+                        self.columns = columns;
+                        self.matrix = vec![vec![CellState::Unexplored; columns]; rows];
+                        self.weights = vec![vec![1; columns]; rows];
+                        self.animation = None;
+                        self.placement_animations.clear();
+                    }
+                }
+
+                if ui.button("Reset Grid").clicked() {
+                    self.matrix = vec![vec![CellState::Unexplored; self.columns]; self.rows];
+                    self.weights = vec![vec![1; self.columns]; self.rows];
                     self.animation = None;
+                    self.placement_animations.clear();
+                    self.drawing_tool = DrawingTool::DrawWall;
                 }
-            }
-            egui::ComboBox::from_label("Select Algorithm")
-                .selected_text(&self.algorithm)
-                .show_ui(ui, |ui| {
-                    for algorithm in path_finding_algorithms {
-                        ui.selectable_value(&mut self.algorithm, algorithm.to_string(), algorithm);
-                    }
-                });
-            if self.algorithm == "Dijkstra" {
-                if ui
-                    .add(
-                        egui::Button::new(
-                            egui::RichText::new("Cost 5").color(egui::Color32::BLACK),
-                        )
-                        .fill(COST_5_COLOR)
-                        .selected(self.drawing_tool == DrawingTool::DrawWeight(5)),
-                    )
-                    .on_hover_text("Paint cells with a traversal cost of 5")
-                    .clicked()
-                {
-                    self.drawing_tool = DrawingTool::DrawWeight(5);
-                }
+                ui.end_row();
 
-                if ui
-                    .add(
-                        egui::Button::new(
-                            egui::RichText::new("Cost 10").color(egui::Color32::BLACK),
-                        )
-                        .fill(COST_10_COLOR)
-                        .selected(self.drawing_tool == DrawingTool::DrawWeight(10)),
-                    )
-                    .on_hover_text("Paint cells with a traversal cost of 10")
-                    .clicked()
-                {
-                    self.drawing_tool = DrawingTool::DrawWeight(10);
-                }
-
-                if ui
-                    .add(
-                        egui::Button::new(
-                            egui::RichText::new("Cost 15").color(egui::Color32::BLACK),
-                        )
-                        .fill(COST_15_COLOR)
-                        .selected(self.drawing_tool == DrawingTool::DrawWeight(15)),
-                    )
-                    .on_hover_text("Paint cells with a traversal cost of 15")
-                    .clicked()
-                {
-                    self.drawing_tool = DrawingTool::DrawWeight(15);
-                }
-            }
-            if ui.button("Find Path").clicked() {
-                let start = find_cell(&self.matrix, CellState::Start);
-                let end = find_cell(&self.matrix, CellState::End);
-
-                if let (Some(start), Some(end)) = (start, end) {
-                    clear_previous_search(&mut self.matrix);
-
-                    let result = match self.algorithm.as_str() {
-                        "DFS" => Some(DFS.find_path(start, end, &self.matrix, &self.weights)),
-                        "BFS" => Some(BFS.find_path(start, end, &self.matrix, &self.weights)),
-                        "Dijkstra" => {
-                            Some(Dijkstra.find_path(start, end, &self.matrix, &self.weights))
+                ui.label("Algorithm:");
+                egui::ComboBox::from_id_salt("algorithm_selector")
+                    .selected_text(&self.algorithm)
+                    .show_ui(ui, |ui| {
+                        for algorithm in path_finding_algorithms {
+                            ui.selectable_value(
+                                &mut self.algorithm,
+                                algorithm.to_string(),
+                                algorithm,
+                            );
                         }
-                        _ => None,
-                    };
+                    });
+                ui.end_row();
 
-                    if let Some(result) = result {
-                        self.animation = Some(SearchAnimation::new(result));
-                        ui.ctx().request_repaint();
+                let algorithm_info = match self.algorithm.as_str() {
+                    "DFS" => Some(DFS.info()),
+                    "BFS" => Some(BFS.info()),
+                    "Dijkstra" => Some(Dijkstra.info()),
+                    _ => None,
+                };
+
+                if let Some(info) = algorithm_info {
+                    ui.label("Algorithm facts:");
+                    ui.vertical(|ui| {
+                        ui.set_max_width(520.0);
+                        ui.strong(info.name);
+                        ui.add(egui::Label::new(info.description).wrap());
+                        ui.label(format!(
+                            "Time: {}    Space: {}",
+                            info.time_complexity, info.space_complexity
+                        ));
+                    });
+                    ui.end_row();
+                }
+
+                if self.algorithm == "Dijkstra" {
+                    ui.label("Terrain weights:");
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                egui::RichText::new("Cost 5").color(egui::Color32::BLACK),
+                            )
+                            .fill(COST_5_COLOR)
+                            .selected(self.drawing_tool == DrawingTool::DrawWeight(5)),
+                        )
+                        .on_hover_text("Paint cells with a traversal cost of 5")
+                        .clicked()
+                    {
+                        self.drawing_tool = DrawingTool::DrawWeight(5);
+                    }
+
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                egui::RichText::new("Cost 10").color(egui::Color32::BLACK),
+                            )
+                            .fill(COST_10_COLOR)
+                            .selected(self.drawing_tool == DrawingTool::DrawWeight(10)),
+                        )
+                        .on_hover_text("Paint cells with a traversal cost of 10")
+                        .clicked()
+                    {
+                        self.drawing_tool = DrawingTool::DrawWeight(10);
+                    }
+
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                egui::RichText::new("Cost 15").color(egui::Color32::BLACK),
+                            )
+                            .fill(COST_15_COLOR)
+                            .selected(self.drawing_tool == DrawingTool::DrawWeight(15)),
+                        )
+                        .on_hover_text("Paint cells with a traversal cost of 15")
+                        .clicked()
+                    {
+                        self.drawing_tool = DrawingTool::DrawWeight(15);
+                    }
+                    ui.end_row();
+                }
+
+                ui.label("Search:");
+                if ui.button("Find Path").clicked() {
+                    let start = find_cell(&self.matrix, CellState::Start);
+                    let end = find_cell(&self.matrix, CellState::End);
+
+                    if let (Some(start), Some(end)) = (start, end) {
+                        clear_previous_search(&mut self.matrix);
+
+                        let result = match self.algorithm.as_str() {
+                            "DFS" => Some(DFS.find_path(start, end, &self.matrix, &self.weights)),
+                            "BFS" => Some(BFS.find_path(start, end, &self.matrix, &self.weights)),
+                            "Dijkstra" => {
+                                Some(Dijkstra.find_path(start, end, &self.matrix, &self.weights))
+                            }
+                            _ => None,
+                        };
+
+                        if let Some(result) = result {
+                            self.animation = Some(SearchAnimation::new(result));
+                            ui.ctx().request_repaint();
+                        }
                     }
                 }
-            }
+                ui.end_row();
 
-            ui.label("Drawing tool:");
-            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawWall, "Walls");
-            ui.selectable_value(&mut self.drawing_tool, DrawingTool::EraseWall, "Eraser");
-            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawStart, "Start");
-            ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd, "End");
-        });
+                ui.label("Drawing tool:");
+                ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawWall, "Walls");
+                ui.selectable_value(&mut self.drawing_tool, DrawingTool::EraseWall, "Eraser");
+                ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawStart, "Start");
+                ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd, "End");
+                ui.end_row();
+            });
     }
 }
 
