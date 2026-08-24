@@ -221,17 +221,17 @@ impl eframe::App for PathFinderVisualizerApp {
     }
 }
 
-        fn find_cell(grid: &[Vec<CellState>], target: CellState) -> Option<Position> {
-            for (row, cells) in grid.iter().enumerate() {
-                for (column, &cell) in cells.iter().enumerate() {
-                    if cell == target {
-                        return Some((row, column));
-                    }
-                }
+fn find_cell(grid: &[Vec<CellState>], target: CellState) -> Option<Position> {
+    for (row, cells) in grid.iter().enumerate() {
+        for (column, &cell) in cells.iter().enumerate() {
+            if cell == target {
+                return Some((row, column));
             }
-
-            None
         }
+    }
+
+    None
+}
 
 fn clear_previous_search(grid: &mut [Vec<CellState>]) {
     for row in grid {
