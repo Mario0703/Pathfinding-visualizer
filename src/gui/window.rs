@@ -227,7 +227,8 @@ impl eframe::App for PathFinderVisualizerApp {
             if self.algorithm == "Dijkstra" {
                 if ui
                     .add(
-                        egui::Button::new("Cost 5")
+                        egui::Button::new(egui::RichText::new("Cost 5")
+            .color(egui::Color32::BLACK))
                             .fill(COST_5_COLOR)
                             .selected(self.drawing_tool == DrawingTool::DrawWeight(5)),
                     )
@@ -239,7 +240,8 @@ impl eframe::App for PathFinderVisualizerApp {
 
                 if ui
                     .add(
-                        egui::Button::new("Cost 10")
+                        egui::Button::new(egui::RichText::new("Cost 10")
+            .color(egui::Color32::BLACK))
                             .fill(COST_10_COLOR)
                             .selected(self.drawing_tool == DrawingTool::DrawWeight(10)),
                     )
@@ -251,7 +253,8 @@ impl eframe::App for PathFinderVisualizerApp {
 
                 if ui
                     .add(
-                        egui::Button::new("Cost 15")
+                        egui::Button::new(egui::RichText::new("Cost 15")
+            .color(egui::Color32::BLACK))
                             .fill(COST_15_COLOR)
                             .selected(self.drawing_tool == DrawingTool::DrawWeight(15)),
                     )
