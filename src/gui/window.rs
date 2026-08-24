@@ -1,5 +1,5 @@
 use crate::CellState;
-use crate::algorithms::{BFS, DFS, PathfindingAlgorithm, Position};
+use crate::algorithms::{BFS, DFS, Dijkstra, PathfindingAlgorithm, Position};
 use crate::gui::animations::SearchAnimation;
 use eframe::egui;
 
@@ -227,10 +227,11 @@ impl eframe::App for PathFinderVisualizerApp {
             if self.algorithm == "Dijkstra" {
                 if ui
                     .add(
-                        egui::Button::new(egui::RichText::new("Cost 5")
-            .color(egui::Color32::BLACK))
-                            .fill(COST_5_COLOR)
-                            .selected(self.drawing_tool == DrawingTool::DrawWeight(5)),
+                        egui::Button::new(
+                            egui::RichText::new("Cost 5").color(egui::Color32::BLACK),
+                        )
+                        .fill(COST_5_COLOR)
+                        .selected(self.drawing_tool == DrawingTool::DrawWeight(5)),
                     )
                     .on_hover_text("Paint cells with a traversal cost of 5")
                     .clicked()
@@ -240,10 +241,11 @@ impl eframe::App for PathFinderVisualizerApp {
 
                 if ui
                     .add(
-                        egui::Button::new(egui::RichText::new("Cost 10")
-            .color(egui::Color32::BLACK))
-                            .fill(COST_10_COLOR)
-                            .selected(self.drawing_tool == DrawingTool::DrawWeight(10)),
+                        egui::Button::new(
+                            egui::RichText::new("Cost 10").color(egui::Color32::BLACK),
+                        )
+                        .fill(COST_10_COLOR)
+                        .selected(self.drawing_tool == DrawingTool::DrawWeight(10)),
                     )
                     .on_hover_text("Paint cells with a traversal cost of 10")
                     .clicked()
@@ -253,10 +255,11 @@ impl eframe::App for PathFinderVisualizerApp {
 
                 if ui
                     .add(
-                        egui::Button::new(egui::RichText::new("Cost 15")
-            .color(egui::Color32::BLACK))
-                            .fill(COST_15_COLOR)
-                            .selected(self.drawing_tool == DrawingTool::DrawWeight(15)),
+                        egui::Button::new(
+                            egui::RichText::new("Cost 15").color(egui::Color32::BLACK),
+                        )
+                        .fill(COST_15_COLOR)
+                        .selected(self.drawing_tool == DrawingTool::DrawWeight(15)),
                     )
                     .on_hover_text("Paint cells with a traversal cost of 15")
                     .clicked()
@@ -274,6 +277,7 @@ impl eframe::App for PathFinderVisualizerApp {
                     let result = match self.algorithm.as_str() {
                         "DFS" => Some(DFS.find_path(start, end, &self.matrix)),
                         "BFS" => Some(BFS.find_path(start, end, &self.matrix)),
+                        "Dijkstra" => Some(Dijkstra.find_path(start, end, &self.matrix)),
                         _ => None,
                     };
 
