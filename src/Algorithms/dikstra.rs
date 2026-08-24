@@ -41,8 +41,7 @@ impl PathfindingAlgorithm for Dijkstra {
             }
 
             visited[current.0][current.1] = true; // Mark the current node as visited
-            explored_order.push(current); // We have explored this node, so we add it to the explored order
-
+            explored_order.push(current); // We have explored this node, so we add it to the explored orderee the shortest or cheapest path.
             if current == end {
                 // we are at the end, build path from end to start using parents, reverse path to get final path as we are starting from the end
                 let mut path = vec![end];
