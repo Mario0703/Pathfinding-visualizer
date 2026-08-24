@@ -275,9 +275,11 @@ impl eframe::App for PathFinderVisualizerApp {
                     clear_previous_search(&mut self.matrix);
 
                     let result = match self.algorithm.as_str() {
-                        "DFS" => Some(DFS.find_path(start, end, &self.matrix)),
-                        "BFS" => Some(BFS.find_path(start, end, &self.matrix)),
-                        "Dijkstra" => Some(Dijkstra.find_path(start, end, &self.matrix)),
+                        "DFS" => Some(DFS.find_path(start, end, &self.matrix, &self.weights)),
+                        "BFS" => Some(BFS.find_path(start, end, &self.matrix, &self.weights)),
+                        "Dijkstra" => {
+                            Some(Dijkstra.find_path(start, end, &self.matrix, &self.weights))
+                        }
                         _ => None,
                     };
 

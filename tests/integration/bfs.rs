@@ -7,11 +7,12 @@ use path_finder_visualizer::{
 #[test]
 fn bfs_finds_a_shortest_path_around_a_wall() {
     let mut grid = empty_grid(3, 3);
+    let weights = vec![vec![1; 3]; 3];
     grid[0][1] = CellState::Wall;
 
     let start = (0, 0);
     let end = (0, 2);
-    let result = BFS.find_path(start, end, &grid);
+    let result = BFS.find_path(start, end, &grid, &weights);
 
     assert_eq!(result.explored_order.first(), Some(&start));
     assert!(result.explored_order.contains(&end));

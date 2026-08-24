@@ -13,7 +13,13 @@ impl PathfindingAlgorithm for Dijkstra {
         }
     }
 
-    fn find_path(&self, start: Position, end: Position, graph: &[Vec<CellState>]) -> SearchResult {
+    fn find_path(
+        &self,
+        start: Position,
+        end: Position,
+        graph: &[Vec<CellState>],
+        weights: &[Vec<u32>],
+    ) -> SearchResult {
         let mut queue = BinaryHeap::<Reverse<(u32, Position)>>::new();
         let mut explored_order = Vec::new();
 
@@ -37,12 +43,15 @@ impl PathfindingAlgorithm for Dijkstra {
             visited[current.0][current.1] = true; // Mark the current node as visited
             explored_order.push(current); // We have explored this node, so we add it to the explored order
 
-            if current == end { // we are at the end, build path from end to start using parents, reverse path to get final path as we are starting from the end
+            if current == end {
+                // we are at the end, build path from end to start using parents, reverse path to get final path as we are starting from the end
                 let mut path = vec![end];
                 let mut position = end;
 
-                while position != start { // while we have not reached the start, keep going up the parents to build the path
-                    position = parents[position.0][position.1].expect("reached node should have a parent");
+                while position != start {
+                    // while we have not reached the start, keep going up the parents to build the path
+                    position =
+                        parents[position.0][position.1].expect("reached node should have a parent");
                     path.push(position);
                 }
 
@@ -55,11 +64,12 @@ impl PathfindingAlgorithm for Dijkstra {
             }
 
             for neighbor in get_neighbors(current, graph) {
-                if visited[neighbor.0][neighbor.1] { // Skip already visited neighbors
+                if visited[neighbor.0][neighbor.1] {
+                    // Skip already visited neighbors
                     continue;
                 }
-                let distance_to_neighbor = 1; 
-                let alternative_distance = current_distance + distance_to_neighbor; 
+                let distance_to_neighbor = weights[neighbor.0][neighbor.1]; // Get the weight of the edge to the neighbor
+                let alternative_distance = current_distance + distance_to_neighbor;
 
                 if alternative_distance < distances[neighbor.0][neighbor.1] {
                     distances[neighbor.0][neighbor.1] = alternative_distance;

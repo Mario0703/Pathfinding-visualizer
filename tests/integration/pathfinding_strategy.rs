@@ -35,7 +35,13 @@ impl PathfindingAlgorithm for TestAlgorithm {
         }
     }
 
-    fn find_path(&self, start: Position, end: Position, _grid: &[Vec<CellState>]) -> SearchResult {
+    fn find_path(
+        &self,
+        start: Position,
+        end: Position,
+        _grid: &[Vec<CellState>],
+        _weights: &[Vec<u32>],
+    ) -> SearchResult {
         SearchResult {
             explored_order: vec![start, (0, 1), end],
             path: Some(vec![start, (0, 1), end]),
@@ -47,8 +53,9 @@ impl PathfindingAlgorithm for TestAlgorithm {
 fn strategy_is_usable_through_the_public_api() {
     let algorithm: Box<dyn PathfindingAlgorithm> = Box::new(TestAlgorithm);
     let grid = empty_grid(1, 3);
+    let weights = vec![vec![1; 3]];
 
-    let result = algorithm.find_path((0, 0), (0, 2), &grid);
+    let result = algorithm.find_path((0, 0), (0, 2), &grid, &weights);
     let path = result.path.expect("the test strategy should find a path");
 
     assert_eq!(algorithm.info().name, "Test");
@@ -60,10 +67,11 @@ fn strategy_is_usable_through_the_public_api() {
 fn basic_dfs_implementation() {
     let algorithm: Box<dyn PathfindingAlgorithm> = Box::new(DFS);
     let grid = empty_grid(3, 3);
+    let weights = vec![vec![1; 3]; 3];
     let start = (0, 0);
     let end = (2, 2);
 
-    let result = algorithm.find_path(start, end, &grid);
+    let result = algorithm.find_path(start, end, &grid, &weights);
 
     assert_eq!(result.explored_order.first(), Some(&start));
     assert!(result.explored_order.contains(&end));
