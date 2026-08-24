@@ -19,7 +19,13 @@ pub struct SearchResult {
 pub trait PathfindingAlgorithm {
     fn info(&self) -> AlgorithmInfo;
 
-    fn find_path(&self, start: Position, end: Position, grid: &[Vec<CellState>]) -> SearchResult;
+    fn find_path(
+        &self,
+        start: Position,
+        end: Position,
+        grid: &[Vec<CellState>],
+        weights: &[Vec<u32>],
+    ) -> SearchResult;
 }
 
 #[cfg(test)]
