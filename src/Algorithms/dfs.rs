@@ -1,6 +1,6 @@
+use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
 use crate::CellState;
 use crate::algorithms::get_neighbors;
-use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
 
 pub struct DFS;
 
@@ -14,16 +14,8 @@ impl PathfindingAlgorithm for DFS {
         }
     }
 
-    fn find_path(
-        &self,
-        start: Position,
-        end: Position,
-        graph: &[Vec<CellState>],
-    ) -> SearchResult {
-        let mut visited: Vec<Vec<bool>> = graph
-        .iter()
-        .map(|row| vec![false; row.len()])
-        .collect();
+    fn find_path(&self, start: Position, end: Position, graph: &[Vec<CellState>]) -> SearchResult {
+        let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
 
         let mut explored_order: Vec<Position> = Vec::new();
         let path = dfs_resursive_helper(start, end, graph, &mut visited, &mut explored_order);

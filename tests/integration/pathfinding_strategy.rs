@@ -1,8 +1,27 @@
 use crate::common::{assert_path_connects, empty_grid};
-use path_finder_visualizer::algorithms::get_neighbors;
 use path_finder_visualizer::{
-    AlgorithmInfo, CellState, PathfindingAlgorithm, Position, SearchResult,
+    CellState,
+    algorithms::{AlgorithmInfo, DFS, PathfindingAlgorithm, Position, SearchResult},
 };
+
+fn get_neighbors(position: Position, grid: &[Vec<CellState>]) -> Vec<Position> {
+    let (row, column) = position;
+    let candidates = [
+        (row.wrapping_sub(1), column),
+        (row + 1, column),
+        (row, column.wrapping_sub(1)),
+        (row, column + 1),
+    ];
+
+    candidates
+        .into_iter()
+        .filter(|&(neighbor_row, neighbor_column)| {
+            neighbor_row < grid.len()
+                && neighbor_column < grid[neighbor_row].len()
+                && grid[neighbor_row][neighbor_column] != CellState::Wall
+        })
+        .collect()
+}
 
 struct TestAlgorithm;
 
@@ -39,8 +58,7 @@ fn strategy_is_usable_through_the_public_api() {
 
 #[test]
 fn basic_dfs_implementation() {
-    let algorithm: Box<dyn PathfindingAlgorithm> =
-        Box::new(path_finder_visualizer::algorithms::DFS);
+    let algorithm: Box<dyn PathfindingAlgorithm> = Box::new(DFS);
     let grid = empty_grid(3, 3);
     let start = (0, 0);
     let end = (2, 2);
