@@ -2271,6 +2271,7 @@ name = "path_finder_visualizer"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "libm",
 ]
 
 [[package]]
