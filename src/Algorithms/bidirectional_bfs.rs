@@ -28,57 +28,78 @@ impl PathfindingAlgorithm for BidirectionalBFS {
             };
         }
 
-        let mut start_queue = VecDeque::from([start]);
-        let mut end_queue = VecDeque::from([end]);
-        let mut start_visited = visited_grid(graph);
-        let mut end_visited = visited_grid(graph);
-        let mut start_parents = parent_grid(graph);
-        let mut end_parents = parent_grid(graph);
+        let mut start_queue = VecDeque::new();
+        let mut end_queue = VecDeque::new();
+
+        start_queue.push_back(start);
+        end_queue.push_back(end);
+
+        let mut start_visited: Vec<Vec<bool>> =
+            graph.iter().map(|row| vec![false; row.len()]).collect();
+
+        let mut end_visited: Vec<Vec<bool>> =
+            graph.iter().map(|row| vec![false; row.len()]).collect();
+
+        let mut start_parents: Vec<Vec<Option<Position>>> =
+            graph.iter().map(|row| vec![None; row.len()]).collect();
+
+        let mut end_parents: Vec<Vec<Option<Position>>> =
+            graph.iter().map(|row| vec![None; row.len()]).collect();
+
         let mut explored_order = Vec::new();
 
-        start_visited[start.0][start.1] = true;
-        end_visited[end.0][end.1] = true;
+        let (start_row, start_column) = start;
+        let (end_row, end_column) = end;
 
-        while !start_queue.is_empty() && !end_queue.is_empty() {
-            if let Some(meeting_point) = expand_level(
+        start_visited[start_row][start_column] = true;
+        end_visited[end_row][end_column] = true;
+
+        let mut both_queues_have_nodes = !start_queue.is_empty() && !end_queue.is_empty();
+
+        while both_queues_have_nodes {
+            let start_meeting_point = expand_one_bfs_level(
                 &mut start_queue,
                 &mut start_visited,
                 &end_visited,
                 &mut start_parents,
                 graph,
                 &mut explored_order,
-            ) {
+            );
+
+            if start_meeting_point.is_some() {
+                let meeting_point = start_meeting_point.expect("A meeting point should exist");
+
+                let path =
+                    reconstruct_path(start, end, meeting_point, &start_parents, &end_parents);
+
                 return SearchResult {
                     explored_order,
-                    path: Some(reconstruct_path(
-                        start,
-                        end,
-                        meeting_point,
-                        &start_parents,
-                        &end_parents,
-                    )),
+                    path: Some(path),
                 };
             }
 
-            if let Some(meeting_point) = expand_level(
+            let end_meeting_point = expand_one_bfs_level(
                 &mut end_queue,
                 &mut end_visited,
                 &start_visited,
                 &mut end_parents,
                 graph,
                 &mut explored_order,
-            ) {
+            );
+
+            if end_meeting_point.is_some() {
+                let meeting_point = end_meeting_point.expect("A meeting point should exist");
+
+                let path =
+                    reconstruct_path(start, end, meeting_point, &start_parents, &end_parents);
+
                 return SearchResult {
                     explored_order,
-                    path: Some(reconstruct_path(
-                        start,
-                        end,
-                        meeting_point,
-                        &start_parents,
-                        &end_parents,
-                    )),
+                    path: Some(path),
                 };
             }
+
+            both_queues_have_nodes = !start_queue.is_empty() && !end_queue.is_empty();
         }
 
         SearchResult {
@@ -88,15 +109,8 @@ impl PathfindingAlgorithm for BidirectionalBFS {
     }
 }
 
-fn visited_grid(graph: &[Vec<CellState>]) -> Vec<Vec<bool>> {
-    graph.iter().map(|row| vec![false; row.len()]).collect()
-}
-
-fn parent_grid(graph: &[Vec<CellState>]) -> Vec<Vec<Option<Position>>> {
-    graph.iter().map(|row| vec![None; row.len()]).collect()
-}
-
-fn expand_level(
+/// Expands one BFS level and returns the meeting point with the opposite search.
+fn expand_one_bfs_level(
     queue: &mut VecDeque<Position>,
     visited: &mut [Vec<bool>],
     other_visited: &[Vec<bool>],
@@ -113,17 +127,20 @@ fn expand_level(
         explored_order.push(current);
 
         for neighbor in get_neighbors(current, graph) {
-            if other_visited[neighbor.0][neighbor.1] {
-                if !visited[neighbor.0][neighbor.1] {
-                    visited[neighbor.0][neighbor.1] = true;
-                    parents[neighbor.0][neighbor.1] = Some(current);
+            let (neighbor_row, neighbor_column) = neighbor;
+
+            if other_visited[neighbor_row][neighbor_column] {
+                if !visited[neighbor_row][neighbor_column] {
+                    visited[neighbor_row][neighbor_column] = true;
+                    parents[neighbor_row][neighbor_column] = Some(current);
                 }
+
                 return Some(neighbor);
             }
 
-            if !visited[neighbor.0][neighbor.1] {
-                visited[neighbor.0][neighbor.1] = true;
-                parents[neighbor.0][neighbor.1] = Some(current);
+            if !visited[neighbor_row][neighbor_column] {
+                visited[neighbor_row][neighbor_column] = true;
+                parents[neighbor_row][neighbor_column] = Some(current);
                 queue.push_back(neighbor);
             }
         }
