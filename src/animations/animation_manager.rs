@@ -114,7 +114,8 @@ impl AnimationManager {
         let eased_progress = COMPLETE_PROGRESS - remaining_progress.powi(CUBIC_EASING_EXPONENT);
         let remaining_eased_progress = COMPLETE_PROGRESS - eased_progress;
 
-        match (animation.kind, cell_state) {
+    // Select the cell's color and animation style based on its state and animation kind.       
+             match (animation.kind, cell_state) {
             (PlacementAnimationKind::Wall, CellState::Wall) => {
                 let maximum_gray_value = f32::from(u8::MAX);
                 let gray = (maximum_gray_value * remaining_eased_progress).round() as u8;
