@@ -35,16 +35,16 @@ struct PathFinderVisualizerApp {
 
 impl Default for PathFinderVisualizerApp {
     fn default() -> Self {
-        let rows = 10;
-        let columns = 10;
+        let starting_row = 10;
+        let starting_column = 10;
 
         Self {
-            rows,
-            columns,
-            selected_rows: rows.to_string(),
-            selected_columns: columns.to_string(),
-            matrix: vec![vec![CellState::Unexplored; columns]; rows],
-            weights: vec![vec![1; columns]; rows],
+            rows: starting_row,
+            columns: starting_column,
+            selected_rows: starting_row.to_string(),
+            selected_columns: starting_column.to_string(),
+            matrix: vec![vec![CellState::Unexplored; starting_column]; starting_row],
+            weights: vec![vec![1; starting_column]; starting_row],
             algorithm: String::from("Select Algorithm"),
             drawing: DrawingManager::default(),
             animations: AnimationManager::default(),
@@ -56,11 +56,15 @@ impl eframe::App for PathFinderVisualizerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.animations.update(&mut self.matrix, ui.ctx());
 
-        let supports_weights = matches!(self.algorithm.as_str(), "Dijkstra" | "A*");
+        let selected_algorithm = self.algorithm.as_str();
+
+        let supports_weights = if selected_algorithm == "Dijkstra" || selected_algorithm == "A*" {
+            true
+        } else {
+            false
+        };
 
         self.drawing.set_weights_enabled(supports_weights);
-
-        let min_width = 50.0;
         let path_finding_algorithms = [
             "Dijkstra",
             "A*",
@@ -83,14 +87,14 @@ impl eframe::App for PathFinderVisualizerApp {
                 ui.label("Rows:");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.selected_rows)
-                        .desired_width(min_width)
+                        .desired_width(50.0)
                         .hint_text("Rows"),
                 );
 
                 ui.label("Columns:");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.selected_columns)
-                        .desired_width(min_width)
+                        .desired_width(50.0)
                         .hint_text("Columns"),
                 );
 
@@ -184,8 +188,13 @@ impl eframe::App for PathFinderVisualizerApp {
                             _ => None,
                         };
 
-                        if let Some(result) = result {
-                            self.animations.start_search(result, ui.ctx());
+                        let has_search_result = result.is_some();
+
+                        if has_search_result {
+                            let search_result =
+                                result.expect("A search result should be available");
+
+                            self.animations.start_search(search_result, ui.ctx());
                         }
                     }
                 }
@@ -196,11 +205,11 @@ impl eframe::App for PathFinderVisualizerApp {
     }
 }
 
-fn find_cell(grid: &[Vec<CellState>], target: CellState) -> Option<Position> {
-    for (row, cells) in grid.iter().enumerate() {
-        for (column, &cell) in cells.iter().enumerate() {
-            if cell == target {
-                return Some((row, column));
+fn find_cell(grid: &[Vec<CellState>], target_state: CellState) -> Option<Position> {
+    for (row_index, row) in grid.iter().enumerate() {
+        for (column_index, &cell_state) in row.iter().enumerate() {
+            if cell_state == target_state {
+                return Some((row_index, column_index));
             }
         }
     }
