@@ -23,7 +23,7 @@ impl PathfindingAlgorithm for AStar {
         graph: &[Vec<CellState>],
         weights: &[Vec<u32>],
     ) -> SearchResult {
-        // Priority queue that stores positions with their distances; the smallest distance is processed first.
+        // Prioritizes positions by f-score, processing the lowest score first.
         let mut priority_queue = BinaryHeap::<Reverse<(u32, Position)>>::new();
 
         let mut distances_from_start: Vec<Vec<u32>> =
@@ -36,8 +36,7 @@ impl PathfindingAlgorithm for AStar {
         let mut manhattan_distances_to_goal: Vec<Vec<u32>> =
             graph.iter().map(|row| vec![u32::MAX; row.len()]).collect();
 
-        let start_f_score = distances_from_start[start_row][start_col]
-            + manhattan_distances_to_goal[start_row][start_col];
+        let start_f_score = manhattan_distance(start, end);
 
         let mut explored_order = Vec::new();
 
@@ -53,6 +52,10 @@ impl PathfindingAlgorithm for AStar {
         while !priority_queue.is_empty() {
             let Reverse((_, current)) = priority_queue.pop().unwrap();
             let (current_row, current_col) = current;
+
+            if visited[current_row][current_col] {
+                continue;
+            }
 
             visited[current_row][current_col] = true;
 
@@ -114,8 +117,7 @@ fn reconstruct_path(
     while current != start {
         let (current_row, current_col) = current;
 
-        current = parents[current_row][current_col]
-            .expect("Every path node should have a parent");
+        current = parents[current_row][current_col].expect("Every path node should have a parent");
 
         path.push(current);
     }
