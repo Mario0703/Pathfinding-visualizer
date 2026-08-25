@@ -1,0 +1,160 @@
+use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult, get_neighbors};
+use crate::CellState;
+use std::collections::VecDeque;
+
+pub struct BidirectionalBFS;
+
+impl PathfindingAlgorithm for BidirectionalBFS {
+    fn info(&self) -> AlgorithmInfo {
+        AlgorithmInfo {
+            name: "Bidirectional Breadth-First Search",
+            description: "An unweighted pathfinding algorithm that runs breadth-first searches from the start and end until their explored regions meet.",
+            time_complexity: "O(V + E)",
+            space_complexity: "O(V)",
+        }
+    }
+
+    fn find_path(
+        &self,
+        start: Position,
+        end: Position,
+        graph: &[Vec<CellState>],
+        _weights: &[Vec<u32>],
+    ) -> SearchResult {
+        if start == end {
+            return SearchResult {
+                explored_order: vec![start],
+                path: Some(vec![start]),
+            };
+        }
+
+        let mut start_queue = VecDeque::from([start]);
+        let mut end_queue = VecDeque::from([end]);
+        let mut start_visited = visited_grid(graph);
+        let mut end_visited = visited_grid(graph);
+        let mut start_parents = parent_grid(graph);
+        let mut end_parents = parent_grid(graph);
+        let mut explored_order = Vec::new();
+
+        start_visited[start.0][start.1] = true;
+        end_visited[end.0][end.1] = true;
+
+        while !start_queue.is_empty() && !end_queue.is_empty() {
+            if let Some(meeting_point) = expand_level(
+                &mut start_queue,
+                &mut start_visited,
+                &end_visited,
+                &mut start_parents,
+                graph,
+                &mut explored_order,
+            ) {
+                return SearchResult {
+                    explored_order,
+                    path: Some(reconstruct_path(
+                        start,
+                        end,
+                        meeting_point,
+                        &start_parents,
+                        &end_parents,
+                    )),
+                };
+            }
+
+            if let Some(meeting_point) = expand_level(
+                &mut end_queue,
+                &mut end_visited,
+                &start_visited,
+                &mut end_parents,
+                graph,
+                &mut explored_order,
+            ) {
+                return SearchResult {
+                    explored_order,
+                    path: Some(reconstruct_path(
+                        start,
+                        end,
+                        meeting_point,
+                        &start_parents,
+                        &end_parents,
+                    )),
+                };
+            }
+        }
+
+        SearchResult {
+            explored_order,
+            path: None,
+        }
+    }
+}
+
+fn visited_grid(graph: &[Vec<CellState>]) -> Vec<Vec<bool>> {
+    graph.iter().map(|row| vec![false; row.len()]).collect()
+}
+
+fn parent_grid(graph: &[Vec<CellState>]) -> Vec<Vec<Option<Position>>> {
+    graph.iter().map(|row| vec![None; row.len()]).collect()
+}
+
+fn expand_level(
+    queue: &mut VecDeque<Position>,
+    visited: &mut [Vec<bool>],
+    other_visited: &[Vec<bool>],
+    parents: &mut [Vec<Option<Position>>],
+    graph: &[Vec<CellState>],
+    explored_order: &mut Vec<Position>,
+) -> Option<Position> {
+    let level_size = queue.len();
+
+    for _ in 0..level_size {
+        let current = queue
+            .pop_front()
+            .expect("the current BFS level must contain level_size nodes");
+        explored_order.push(current);
+
+        for neighbor in get_neighbors(current, graph) {
+            if other_visited[neighbor.0][neighbor.1] {
+                if !visited[neighbor.0][neighbor.1] {
+                    visited[neighbor.0][neighbor.1] = true;
+                    parents[neighbor.0][neighbor.1] = Some(current);
+                }
+                return Some(neighbor);
+            }
+
+            if !visited[neighbor.0][neighbor.1] {
+                visited[neighbor.0][neighbor.1] = true;
+                parents[neighbor.0][neighbor.1] = Some(current);
+                queue.push_back(neighbor);
+            }
+        }
+    }
+
+    None
+}
+
+fn reconstruct_path(
+    start: Position,
+    end: Position,
+    meeting_point: Position,
+    start_parents: &[Vec<Option<Position>>],
+    end_parents: &[Vec<Option<Position>>],
+) -> Vec<Position> {
+    let mut path = vec![meeting_point];
+    let mut current = meeting_point;
+
+    while current != start {
+        current = start_parents[current.0][current.1]
+            .expect("every node between the meeting point and start must have a parent");
+        path.push(current);
+    }
+    path.reverse();
+
+    current = meeting_point;
+    while current != end {
+        current = end_parents[current.0][current.1]
+            .expect("every node between the meeting point and end must have a parent");
+        path.push(current);
+    }
+
+    path
+}

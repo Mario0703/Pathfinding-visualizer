@@ -1,5 +1,7 @@
 use crate::CellState;
-use crate::algorithms::{AStar, BFS, DFS, Dijkstra, PathfindingAlgorithm, Position};
+use crate::algorithms::{
+    AStar, BFS, BidirectionalBFS, DFS, Dijkstra, PathfindingAlgorithm, Position,
+};
 use crate::gui::animations::SearchAnimation;
 use eframe::egui;
 use std::{
@@ -126,7 +128,7 @@ impl eframe::App for PathFinderVisualizerApp {
         let cell_height = 30.0;
         let horizontal_gap = -9.0;
         let vertical_gap = 0.0;
-        let path_finding_algorithms = ["Dijkstra", "A*", "BFS", "DFS"];
+        let path_finding_algorithms = ["Dijkstra", "A*", "BFS", "Bidirectional BFS", "DFS"];
         const CELL_CORNER_RADIUS: f32 = 0.0;
         const CELL_BORDER_WIDTH: f32 = 1.0;
         const CELL_BORDER_COLOR: egui::Color32 = egui::Color32::BLACK;
@@ -385,6 +387,7 @@ impl eframe::App for PathFinderVisualizerApp {
                 let algorithm_info = match self.algorithm.as_str() {
                     "DFS" => Some(DFS.info()),
                     "BFS" => Some(BFS.info()),
+                    "Bidirectional BFS" => Some(BidirectionalBFS.info()),
                     "Dijkstra" => Some(Dijkstra.info()),
                     _ => None,
                 };
@@ -460,6 +463,12 @@ impl eframe::App for PathFinderVisualizerApp {
                         let result = match self.algorithm.as_str() {
                             "DFS" => Some(DFS.find_path(start, end, &self.matrix, &self.weights)),
                             "BFS" => Some(BFS.find_path(start, end, &self.matrix, &self.weights)),
+                            "Bidirectional BFS" => Some(BidirectionalBFS.find_path(
+                                start,
+                                end,
+                                &self.matrix,
+                                &self.weights,
+                            )),
                             "Dijkstra" => {
                                 Some(Dijkstra.find_path(start, end, &self.matrix, &self.weights))
                             }
