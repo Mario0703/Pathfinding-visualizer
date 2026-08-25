@@ -1,6 +1,6 @@
 use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
-use crate::CellState::{self, End};
-use crate::algorithms::{get_neighbors, neighbors};
+use crate::CellState::{self};
+use crate::algorithms::{get_neighbors};
 use std::vec;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
