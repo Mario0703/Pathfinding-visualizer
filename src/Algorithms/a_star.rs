@@ -46,7 +46,7 @@ impl PathfindingAlgorithm for AStar {
 
         priority_queue.push(Reverse((start_f_score, start)));
 
-        manhattan_distances_to_goal[start.0][start.1] = manhattan_distance(start, end);
+        manhattan_distances_to_goal[start_row][start_col] = manhattan_distance(start, end);
 
         let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
 
