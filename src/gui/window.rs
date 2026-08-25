@@ -3,18 +3,12 @@ use crate::algorithms::{
     AStar, BFS, BidirectionalBFS, DFS, Dijkstra, GreedyBestFirstSearch, PathfindingAlgorithm,
     Position,
 };
-use crate::gui::animations::SearchAnimation;
+use crate::gui::animations::{AnimationManager, PlacementAnimationKind};
 use eframe::egui;
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
 
 const COST_5_COLOR: egui::Color32 = egui::Color32::from_rgb(190, 220, 120);
 const COST_10_COLOR: egui::Color32 = egui::Color32::from_rgb(210, 155, 80);
 const COST_15_COLOR: egui::Color32 = egui::Color32::from_rgb(145, 95, 60);
-const PLACEMENT_ANIMATION_DURATION: Duration = Duration::from_millis(220);
-const PLACEMENT_REPAINT_INTERVAL: Duration = Duration::from_millis(16);
 
 pub fn run() -> eframe::Result {
     let height = 800.0;
@@ -40,34 +34,6 @@ enum DrawingTool {
     DrawEnd,
 }
 
-#[derive(Clone, Copy)]
-enum PlacementAnimationKind {
-    Wall,
-    Weight,
-    Start,
-    End,
-}
-
-struct PlacementAnimation {
-    kind: PlacementAnimationKind,
-    started_at: Instant,
-}
-
-impl PlacementAnimation {
-    fn new(kind: PlacementAnimationKind) -> Self {
-        Self {
-            kind,
-            started_at: Instant::now(),
-        }
-    }
-
-    fn progress(&self, now: Instant) -> f32 {
-        (now.duration_since(self.started_at).as_secs_f32()
-            / PLACEMENT_ANIMATION_DURATION.as_secs_f32())
-        .clamp(0.0, 1.0)
-    }
-}
-
 struct PathFinderVisualizerApp {
     rows: usize,
     columns: usize,
@@ -77,8 +43,7 @@ struct PathFinderVisualizerApp {
     weights: Vec<Vec<u32>>,
     algorithm: String,
     drawing_tool: DrawingTool,
-    animation: Option<SearchAnimation>,
-    placement_animations: HashMap<Position, PlacementAnimation>,
+    animations: AnimationManager,
 }
 
 impl Default for PathFinderVisualizerApp {
@@ -95,28 +60,14 @@ impl Default for PathFinderVisualizerApp {
             weights: vec![vec![1; columns]; rows],
             algorithm: String::from("Select Algorithm"),
             drawing_tool: DrawingTool::DrawWall,
-            animation: None,
-            placement_animations: HashMap::new(),
+            animations: AnimationManager::default(),
         }
     }
 }
 
 impl eframe::App for PathFinderVisualizerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        let animation_finished = if let Some(animation) = &mut self.animation {
-            animation.update(&mut self.matrix, ui.ctx());
-            animation.is_finished()
-        } else {
-            false
-        };
-
-        if animation_finished {
-            self.animation = None;
-        }
-
-        let animation_time = Instant::now();
-        self.placement_animations
-            .retain(|_, animation| animation.progress(animation_time) < 1.0);
+        self.animations.update(&mut self.matrix, ui.ctx());
 
         let supports_weights = matches!(self.algorithm.as_str(), "Dijkstra" | "A*");
 
@@ -161,9 +112,9 @@ impl eframe::App for PathFinderVisualizerApp {
                         match self.drawing_tool {
                             DrawingTool::DrawWall if primary_down && pointer_over_cell => {
                                 if self.matrix[row][column] != CellState::Wall {
-                                    self.placement_animations.insert(
+                                    self.animations.start_placement(
                                         (row, column),
-                                        PlacementAnimation::new(PlacementAnimationKind::Wall),
+                                        PlacementAnimationKind::Wall,
                                     );
                                 }
                                 self.matrix[row][column] = CellState::Wall;
@@ -181,9 +132,9 @@ impl eframe::App for PathFinderVisualizerApp {
                                     && (self.weights[row][column] != weight
                                         || self.matrix[row][column] != CellState::Unexplored)
                                 {
-                                    self.placement_animations.insert(
+                                    self.animations.start_placement(
                                         (row, column),
-                                        PlacementAnimation::new(PlacementAnimationKind::Weight),
+                                        PlacementAnimationKind::Weight,
                                     );
                                 }
 
@@ -193,7 +144,7 @@ impl eframe::App for PathFinderVisualizerApp {
                                 }
                             }
                             DrawingTool::EraseWall if primary_down && pointer_over_cell => {
-                                self.placement_animations.remove(&(row, column));
+                                self.animations.cancel_placement((row, column));
                                 self.matrix[row][column] = CellState::Unexplored;
                                 self.weights[row][column] = 1;
                             }
@@ -204,15 +155,13 @@ impl eframe::App for PathFinderVisualizerApp {
                                     for column in 0..self.columns {
                                         if self.matrix[row][column] == CellState::Start {
                                             self.matrix[row][column] = CellState::Unexplored;
-                                            self.placement_animations.remove(&(row, column));
+                                            self.animations.cancel_placement((row, column));
                                         }
                                     }
                                 }
                                 self.matrix[row][column] = CellState::Start;
-                                self.placement_animations.insert(
-                                    (row, column),
-                                    PlacementAnimation::new(PlacementAnimationKind::Start),
-                                );
+                                self.animations
+                                    .start_placement((row, column), PlacementAnimationKind::Start);
                             }
                             DrawingTool::DrawEnd
                                 if response.clicked() && self.weights[row][column] == 1 =>
@@ -221,15 +170,13 @@ impl eframe::App for PathFinderVisualizerApp {
                                     for column in 0..self.columns {
                                         if self.matrix[row][column] == CellState::End {
                                             self.matrix[row][column] = CellState::Unexplored;
-                                            self.placement_animations.remove(&(row, column));
+                                            self.animations.cancel_placement((row, column));
                                         }
                                     }
                                 }
                                 self.matrix[row][column] = CellState::End;
-                                self.placement_animations.insert(
-                                    (row, column),
-                                    PlacementAnimation::new(PlacementAnimationKind::End),
-                                );
+                                self.animations
+                                    .start_placement((row, column), PlacementAnimationKind::End);
                             }
                             _ => {}
                         }
@@ -245,65 +192,15 @@ impl eframe::App for PathFinderVisualizerApp {
                             CellState::Path => egui::Color32::YELLOW,
                         };
 
-                        match self.placement_animations.get(&(row, column)) {
-                            Some(animation)
-                                if matches!(animation.kind, PlacementAnimationKind::Wall)
-                                    && cell_state == CellState::Wall =>
-                            {
-                                let progress = animation.progress(animation_time);
-                                let eased_progress = 1.0 - (1.0 - progress).powi(3);
-                                let gray = (255.0 * (1.0 - eased_progress)).round() as u8;
-                                ui.painter().rect_filled(
-                                    rect,
-                                    CELL_CORNER_RADIUS,
-                                    egui::Color32::from_gray(gray),
-                                );
-                            }
-                            Some(animation)
-                                if matches!(
-                                    animation.kind,
-                                    PlacementAnimationKind::Weight
-                                        | PlacementAnimationKind::Start
-                                        | PlacementAnimationKind::End
-                                ) && (matches!(
-                                    animation.kind,
-                                    PlacementAnimationKind::Weight
-                                ) && cell_state == CellState::Unexplored
-                                    || matches!(
-                                        animation.kind,
-                                        PlacementAnimationKind::Start | PlacementAnimationKind::End
-                                    ) && matches!(
-                                        cell_state,
-                                        CellState::Start | CellState::End
-                                    )) =>
-                            {
-                                let background_color =
-                                    if matches!(animation.kind, PlacementAnimationKind::Weight) {
-                                        egui::Color32::WHITE
-                                    } else {
-                                        weight_color(weight)
-                                    };
-                                ui.painter().rect_filled(
-                                    rect,
-                                    CELL_CORNER_RADIUS,
-                                    background_color,
-                                );
-
-                                let progress = animation.progress(animation_time);
-                                let eased_progress = 1.0 - (1.0 - progress).powi(3);
-                                let inset =
-                                    rect.width().min(rect.height()) * (1.0 - eased_progress) * 0.5;
-                                ui.painter().rect_filled(
-                                    rect.shrink(inset),
-                                    CELL_CORNER_RADIUS,
-                                    cell_color,
-                                );
-                            }
-                            _ => {
-                                ui.painter()
-                                    .rect_filled(rect, CELL_CORNER_RADIUS, cell_color);
-                            }
-                        }
+                        self.animations.paint_cell(
+                            ui.painter(),
+                            rect,
+                            CELL_CORNER_RADIUS,
+                            (row, column),
+                            cell_state,
+                            cell_color,
+                            weight_color(weight),
+                        );
 
                         ui.painter().rect_stroke(
                             rect,
@@ -334,10 +231,6 @@ impl eframe::App for PathFinderVisualizerApp {
                 }
             });
 
-        if !self.placement_animations.is_empty() {
-            ui.ctx().request_repaint_after(PLACEMENT_REPAINT_INTERVAL);
-        }
-
         egui::Grid::new("controls_grid")
             .spacing([12.0, 8.0])
             .show(ui, |ui| {
@@ -364,16 +257,14 @@ impl eframe::App for PathFinderVisualizerApp {
                         self.columns = columns;
                         self.matrix = vec![vec![CellState::Unexplored; columns]; rows];
                         self.weights = vec![vec![1; columns]; rows];
-                        self.animation = None;
-                        self.placement_animations.clear();
+                        self.animations.clear();
                     }
                 }
 
                 if ui.button("Reset Grid").clicked() {
                     self.matrix = vec![vec![CellState::Unexplored; self.columns]; self.rows];
                     self.weights = vec![vec![1; self.columns]; self.rows];
-                    self.animation = None;
-                    self.placement_animations.clear();
+                    self.animations.clear();
                     self.drawing_tool = DrawingTool::DrawWall;
                 }
                 ui.end_row();
@@ -492,8 +383,7 @@ impl eframe::App for PathFinderVisualizerApp {
                         };
 
                         if let Some(result) = result {
-                            self.animation = Some(SearchAnimation::new(result));
-                            ui.ctx().request_repaint();
+                            self.animations.start_search(result, ui.ctx());
                         }
                     }
                 }
