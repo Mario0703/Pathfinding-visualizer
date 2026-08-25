@@ -3,12 +3,8 @@ use crate::algorithms::{
     AStar, BFS, BidirectionalBFS, DFS, Dijkstra, GreedyBestFirstSearch, PathfindingAlgorithm,
     Position,
 };
-use crate::gui::animations::{AnimationManager, PlacementAnimationKind};
+use crate::{animations::AnimationManager, drawing::DrawingManager};
 use eframe::egui;
-
-const COST_5_COLOR: egui::Color32 = egui::Color32::from_rgb(190, 220, 120);
-const COST_10_COLOR: egui::Color32 = egui::Color32::from_rgb(210, 155, 80);
-const COST_15_COLOR: egui::Color32 = egui::Color32::from_rgb(145, 95, 60);
 
 pub fn run() -> eframe::Result {
     let height = 800.0;
@@ -25,15 +21,6 @@ pub fn run() -> eframe::Result {
         Box::new(|_cc| Ok(Box::new(PathFinderVisualizerApp::default()))),
     )
 }
-#[derive(Clone, Copy, PartialEq)]
-enum DrawingTool {
-    DrawWall,
-    DrawWeight(u32),
-    EraseWall,
-    DrawStart,
-    DrawEnd,
-}
-
 struct PathFinderVisualizerApp {
     rows: usize,
     columns: usize,
@@ -42,7 +29,7 @@ struct PathFinderVisualizerApp {
     matrix: Vec<Vec<CellState>>,
     weights: Vec<Vec<u32>>,
     algorithm: String,
-    drawing_tool: DrawingTool,
+    drawing: DrawingManager,
     animations: AnimationManager,
 }
 
@@ -59,7 +46,7 @@ impl Default for PathFinderVisualizerApp {
             matrix: vec![vec![CellState::Unexplored; columns]; rows],
             weights: vec![vec![1; columns]; rows],
             algorithm: String::from("Select Algorithm"),
-            drawing_tool: DrawingTool::DrawWall,
+            drawing: DrawingManager::default(),
             animations: AnimationManager::default(),
         }
     }
@@ -71,15 +58,9 @@ impl eframe::App for PathFinderVisualizerApp {
 
         let supports_weights = matches!(self.algorithm.as_str(), "Dijkstra" | "A*");
 
-        if !supports_weights && matches!(self.drawing_tool, DrawingTool::DrawWeight(_)) {
-            self.drawing_tool = DrawingTool::DrawWall;
-        }
+        self.drawing.set_weights_enabled(supports_weights);
 
         let min_width = 50.0;
-        let cell_width = 30.0;
-        let cell_height = 30.0;
-        let horizontal_gap = -9.0;
-        let vertical_gap = 0.0;
         let path_finding_algorithms = [
             "Dijkstra",
             "A*",
@@ -88,148 +69,13 @@ impl eframe::App for PathFinderVisualizerApp {
             "Bidirectional BFS",
             "DFS",
         ];
-        const CELL_CORNER_RADIUS: f32 = 0.0;
-        const CELL_BORDER_WIDTH: f32 = 1.0;
-        const CELL_BORDER_COLOR: egui::Color32 = egui::Color32::BLACK;
 
-        egui::Grid::new("pathfinding_grid")
-            .spacing([horizontal_gap, vertical_gap])
-            .show(ui, |ui| {
-                for row in 0..self.rows {
-                    for column in 0..self.columns {
-                        let cell_size = egui::vec2(cell_width, cell_height);
-                        let (rect, response) =
-                            ui.allocate_exact_size(cell_size, egui::Sense::click_and_drag());
-                        let (primary_down, pointer_over_cell) = ui.input(|input| {
-                            let pointer_over_cell = input
-                                .pointer
-                                .hover_pos()
-                                .is_some_and(|position| rect.contains(position));
-
-                            (input.pointer.primary_down(), pointer_over_cell)
-                        });
-
-                        match self.drawing_tool {
-                            DrawingTool::DrawWall if primary_down && pointer_over_cell => {
-                                if self.matrix[row][column] != CellState::Wall {
-                                    self.animations.start_placement(
-                                        (row, column),
-                                        PlacementAnimationKind::Wall,
-                                    );
-                                }
-                                self.matrix[row][column] = CellState::Wall;
-                                self.weights[row][column] = 1;
-                            }
-                            DrawingTool::DrawWeight(weight)
-                                if primary_down && pointer_over_cell =>
-                            {
-                                let can_draw_weight = !matches!(
-                                    self.matrix[row][column],
-                                    CellState::Start | CellState::End
-                                );
-
-                                if can_draw_weight
-                                    && (self.weights[row][column] != weight
-                                        || self.matrix[row][column] != CellState::Unexplored)
-                                {
-                                    self.animations.start_placement(
-                                        (row, column),
-                                        PlacementAnimationKind::Weight,
-                                    );
-                                }
-
-                                if can_draw_weight {
-                                    self.weights[row][column] = weight;
-                                    self.matrix[row][column] = CellState::Unexplored;
-                                }
-                            }
-                            DrawingTool::EraseWall if primary_down && pointer_over_cell => {
-                                self.animations.cancel_placement((row, column));
-                                self.matrix[row][column] = CellState::Unexplored;
-                                self.weights[row][column] = 1;
-                            }
-                            DrawingTool::DrawStart
-                                if response.clicked() && self.weights[row][column] == 1 =>
-                            {
-                                for row in 0..self.rows {
-                                    for column in 0..self.columns {
-                                        if self.matrix[row][column] == CellState::Start {
-                                            self.matrix[row][column] = CellState::Unexplored;
-                                            self.animations.cancel_placement((row, column));
-                                        }
-                                    }
-                                }
-                                self.matrix[row][column] = CellState::Start;
-                                self.animations
-                                    .start_placement((row, column), PlacementAnimationKind::Start);
-                            }
-                            DrawingTool::DrawEnd
-                                if response.clicked() && self.weights[row][column] == 1 =>
-                            {
-                                for row in 0..self.rows {
-                                    for column in 0..self.columns {
-                                        if self.matrix[row][column] == CellState::End {
-                                            self.matrix[row][column] = CellState::Unexplored;
-                                            self.animations.cancel_placement((row, column));
-                                        }
-                                    }
-                                }
-                                self.matrix[row][column] = CellState::End;
-                                self.animations
-                                    .start_placement((row, column), PlacementAnimationKind::End);
-                            }
-                            _ => {}
-                        }
-
-                        let cell_state = self.matrix[row][column];
-                        let weight = self.weights[row][column];
-                        let cell_color = match cell_state {
-                            CellState::Explored => egui::Color32::LIGHT_BLUE,
-                            CellState::Unexplored => weight_color(weight),
-                            CellState::Wall => egui::Color32::BLACK,
-                            CellState::Start => egui::Color32::GREEN,
-                            CellState::End => egui::Color32::RED,
-                            CellState::Path => egui::Color32::YELLOW,
-                        };
-
-                        self.animations.paint_cell(
-                            ui.painter(),
-                            rect,
-                            CELL_CORNER_RADIUS,
-                            (row, column),
-                            cell_state,
-                            cell_color,
-                            weight_color(weight),
-                        );
-
-                        ui.painter().rect_stroke(
-                            rect,
-                            CELL_CORNER_RADIUS,
-                            egui::Stroke::new(CELL_BORDER_WIDTH, CELL_BORDER_COLOR),
-                            egui::StrokeKind::Inside,
-                        );
-
-                        if weight > 1 && cell_state != CellState::Wall {
-                            let text_color = if cell_state == CellState::Unexplored && weight == 15
-                            {
-                                egui::Color32::WHITE
-                            } else {
-                                egui::Color32::BLACK
-                            };
-
-                            ui.painter().text(
-                                rect.center(),
-                                egui::Align2::CENTER_CENTER,
-                                weight.to_string(),
-                                egui::FontId::proportional(12.0),
-                                text_color,
-                            );
-                        }
-                    }
-
-                    ui.end_row();
-                }
-            });
+        self.drawing.show_grid(
+            ui,
+            &mut self.matrix,
+            &mut self.weights,
+            &mut self.animations,
+        );
 
         egui::Grid::new("controls_grid")
             .spacing([12.0, 8.0])
@@ -265,7 +111,7 @@ impl eframe::App for PathFinderVisualizerApp {
                     self.matrix = vec![vec![CellState::Unexplored; self.columns]; self.rows];
                     self.weights = vec![vec![1; self.columns]; self.rows];
                     self.animations.clear();
-                    self.drawing_tool = DrawingTool::DrawWall;
+                    self.drawing.reset();
                 }
                 ui.end_row();
 
@@ -306,51 +152,7 @@ impl eframe::App for PathFinderVisualizerApp {
                     ui.end_row();
                 }
 
-                if supports_weights {
-                    ui.label("Terrain weights:");
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                egui::RichText::new("Cost 5").color(egui::Color32::BLACK),
-                            )
-                            .fill(COST_5_COLOR)
-                            .selected(self.drawing_tool == DrawingTool::DrawWeight(5)),
-                        )
-                        .on_hover_text("Paint cells with a traversal cost of 5")
-                        .clicked()
-                    {
-                        self.drawing_tool = DrawingTool::DrawWeight(5);
-                    }
-
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                egui::RichText::new("Cost 10").color(egui::Color32::BLACK),
-                            )
-                            .fill(COST_10_COLOR)
-                            .selected(self.drawing_tool == DrawingTool::DrawWeight(10)),
-                        )
-                        .on_hover_text("Paint cells with a traversal cost of 10")
-                        .clicked()
-                    {
-                        self.drawing_tool = DrawingTool::DrawWeight(10);
-                    }
-
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                egui::RichText::new("Cost 15").color(egui::Color32::BLACK),
-                            )
-                            .fill(COST_15_COLOR)
-                            .selected(self.drawing_tool == DrawingTool::DrawWeight(15)),
-                        )
-                        .on_hover_text("Paint cells with a traversal cost of 15")
-                        .clicked()
-                    {
-                        self.drawing_tool = DrawingTool::DrawWeight(15);
-                    }
-                    ui.end_row();
-                }
+                self.drawing.show_weight_controls(ui, supports_weights);
 
                 ui.label("Search:");
                 if ui.button("Find Path").clicked() {
@@ -389,22 +191,8 @@ impl eframe::App for PathFinderVisualizerApp {
                 }
                 ui.end_row();
 
-                ui.label("Drawing tool:");
-                ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawWall, "Walls");
-                ui.selectable_value(&mut self.drawing_tool, DrawingTool::EraseWall, "Eraser");
-                ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawStart, "Start");
-                ui.selectable_value(&mut self.drawing_tool, DrawingTool::DrawEnd, "End");
-                ui.end_row();
+                self.drawing.show_tool_controls(ui);
             });
-    }
-}
-
-fn weight_color(weight: u32) -> egui::Color32 {
-    match weight {
-        5 => COST_5_COLOR,
-        10 => COST_10_COLOR,
-        15 => COST_15_COLOR,
-        _ => egui::Color32::WHITE,
     }
 }
 
