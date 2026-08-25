@@ -35,7 +35,7 @@ impl PathfindingAlgorithm for Dijkstra {
 
         while !queue.is_empty() {
             let Reverse((current_distance, current)) = queue.pop().unwrap();
-            let (current_row, current_coloumn) = current
+            let (current_row, current_coloumn) = current;
 
             if visited[current_row][current_coloumn] {
                 continue; // Skip already visited nodes

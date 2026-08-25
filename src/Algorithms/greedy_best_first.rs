@@ -22,19 +22,20 @@ impl PathfindingAlgorithm for GreedyBestFirstSearch {
         _weights: &[Vec<u32>],
     ) -> SearchResult {
         let mut queue = BinaryHeap::new();
-        let mut visited: Vec<Vec<bool>> =
-            graph.iter().map(|row| vec![false; row.len()]).collect();
+        let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
         let mut parents: Vec<Vec<Option<Position>>> =
             graph.iter().map(|row| vec![None; row.len()]).collect();
         let mut explored_order = Vec::new();
+        let (start_row, start_column) = start;
 
-        visited[start.0][start.1] = true;
+        visited[start_row][start_column] = true;
         queue.push(Reverse((manhattan_distance(start, end), start)));
 
         while !queue.is_empty() {
             let Reverse((_, current)) = queue
                 .pop()
                 .expect("the queue must contain an item while it is not empty");
+
             explored_order.push(current);
 
             if current == end {
@@ -45,13 +46,17 @@ impl PathfindingAlgorithm for GreedyBestFirstSearch {
             }
 
             for neighbor in get_neighbors(current, graph) {
-                if visited[neighbor.0][neighbor.1] {
+                let (neighbor_row, neighbor_column) = neighbor;
+
+                if visited[neighbor_row][neighbor_column] {
                     continue;
                 }
 
-                visited[neighbor.0][neighbor.1] = true;
-                parents[neighbor.0][neighbor.1] = Some(current);
-                queue.push(Reverse((manhattan_distance(neighbor, end), neighbor)));
+                visited[neighbor_row][neighbor_column] = true;
+                parents[neighbor_row][neighbor_column] = Some(current);
+
+                let neighbor_distance_to_end = manhattan_distance(neighbor, end);
+                queue.push(Reverse((neighbor_distance_to_end, neighbor)));
             }
         }
 
@@ -63,7 +68,10 @@ impl PathfindingAlgorithm for GreedyBestFirstSearch {
 }
 
 fn manhattan_distance(position: Position, end: Position) -> usize {
-    position.0.abs_diff(end.0) + position.1.abs_diff(end.1)
+    let (position_row, position_column) = position;
+    let (end_row, end_column) = end;
+
+    position_row.abs_diff(end_row) + position_column.abs_diff(end_column)
 }
 
 fn reconstruct_path(
@@ -71,15 +79,18 @@ fn reconstruct_path(
     end: Position,
     parents: &[Vec<Option<Position>>],
 ) -> Vec<Position> {
-    let mut path = vec![end];
-    let mut current = end;
+    let mut reconstructed_path = vec![end];
+    let mut current_path_position = end;
 
-    while current != start {
-        current = parents[current.0][current.1]
-            .expect("every discovered node except the start must have a parent");
-        path.push(current);
+    while current_path_position != start {
+        let (current_row, current_column) = current_path_position;
+
+        current_path_position = parents[current_row][current_column]
+            .expect("Every discovered node except the start must have a parent");
+
+        reconstructed_path.push(current_path_position);
     }
 
-    path.reverse();
-    path
+    reconstructed_path.reverse();
+    reconstructed_path
 }
