@@ -76,17 +76,19 @@ impl PathfindingAlgorithm for AStar {
             for neighbor in get_neighbors(current, graph) {
                 let (neighbor_row, neighbor_col) = neighbor;
 
+                //distance from start to neighbor though the current node
                 let tentative_distance = distances_from_start[current_row][current_col]
                     + weights[neighbor_row][neighbor_col];
-
+                
                 if tentative_distance < distances_from_start[neighbor_row][neighbor_col] {
+                    // A shorter path to this neighbor was found, so record it.
                     distances_from_start[neighbor_row][neighbor_col] = tentative_distance;
                     parents[neighbor_row][neighbor_col] = Some(current);
 
-                    let manhattan_distance = manhattan_distance(neighbor, end);
-                    manhattan_distances_to_goal[neighbor_row][neighbor_col] = manhattan_distance;
+                    let distance_to_goal = manhattan_distance(neighbor, end);
+                    let f_score = tentative_distance + distance_to_goal;
 
-                    let f_score = tentative_distance + manhattan_distance;
+                    // Schedule the neighbor to be processed according to its new f-score.
                     priority_queue.push(Reverse((f_score, neighbor)));
                 }
             }
