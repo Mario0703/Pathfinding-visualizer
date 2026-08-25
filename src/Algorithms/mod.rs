@@ -1,4 +1,5 @@
 mod bfs;
+mod bidirectional_bfs;
 mod dfs;
 
 mod a_star;
@@ -8,6 +9,7 @@ mod path_findings_traits;
 
 pub use a_star::AStar;
 pub use bfs::BFS;
+pub use bidirectional_bfs::BidirectionalBFS;
 pub use dfs::DFS;
 pub use dikstra::Dijkstra;
 pub use neighbors::get_neighbors;
