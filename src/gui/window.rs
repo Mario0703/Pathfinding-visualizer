@@ -1,6 +1,7 @@
 use crate::CellState;
 use crate::algorithms::{
-    AStar, BFS, BidirectionalBFS, DFS, Dijkstra, PathfindingAlgorithm, Position,
+    AStar, BFS, BidirectionalBFS, DFS, Dijkstra, GreedyBestFirstSearch, PathfindingAlgorithm,
+    Position,
 };
 use crate::gui::animations::SearchAnimation;
 use eframe::egui;
@@ -128,7 +129,14 @@ impl eframe::App for PathFinderVisualizerApp {
         let cell_height = 30.0;
         let horizontal_gap = -9.0;
         let vertical_gap = 0.0;
-        let path_finding_algorithms = ["Dijkstra", "A*", "BFS", "Bidirectional BFS", "DFS"];
+        let path_finding_algorithms = [
+            "Dijkstra",
+            "A*",
+            "Greedy Best-First",
+            "BFS",
+            "Bidirectional BFS",
+            "DFS",
+        ];
         const CELL_CORNER_RADIUS: f32 = 0.0;
         const CELL_BORDER_WIDTH: f32 = 1.0;
         const CELL_BORDER_COLOR: egui::Color32 = egui::Color32::BLACK;
@@ -388,6 +396,7 @@ impl eframe::App for PathFinderVisualizerApp {
                     "DFS" => Some(DFS.info()),
                     "BFS" => Some(BFS.info()),
                     "Bidirectional BFS" => Some(BidirectionalBFS.info()),
+                    "Greedy Best-First" => Some(GreedyBestFirstSearch.info()),
                     "Dijkstra" => Some(Dijkstra.info()),
                     _ => None,
                 };
@@ -464,6 +473,12 @@ impl eframe::App for PathFinderVisualizerApp {
                             "DFS" => Some(DFS.find_path(start, end, &self.matrix, &self.weights)),
                             "BFS" => Some(BFS.find_path(start, end, &self.matrix, &self.weights)),
                             "Bidirectional BFS" => Some(BidirectionalBFS.find_path(
+                                start,
+                                end,
+                                &self.matrix,
+                                &self.weights,
+                            )),
+                            "Greedy Best-First" => Some(GreedyBestFirstSearch.find_path(
                                 start,
                                 end,
                                 &self.matrix,
