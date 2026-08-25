@@ -1,4 +1,4 @@
-use super::animations_traits::{AnimationPhase, SearchAnimation};
+use super::animations::{AnimationPhase, SearchAnimation};
 use crate::CellState;
 use eframe::egui;
 use std::time::Instant;

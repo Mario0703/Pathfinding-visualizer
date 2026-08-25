@@ -1,5 +1,5 @@
 use crate::CellState;
-use crate::algorithms::{BFS, DFS, Dijkstra, PathfindingAlgorithm, Position};
+use crate::algorithms::{AStar, BFS, DFS, Dijkstra, PathfindingAlgorithm, Position};
 use crate::gui::animations::SearchAnimation;
 use eframe::egui;
 use std::{
@@ -115,7 +115,9 @@ impl eframe::App for PathFinderVisualizerApp {
         self.placement_animations
             .retain(|_, animation| animation.progress(animation_time) < 1.0);
 
-        if self.algorithm != "Dijkstra" && matches!(self.drawing_tool, DrawingTool::DrawWeight(_)) {
+        let supports_weights = matches!(self.algorithm.as_str(), "Dijkstra" | "A*");
+
+        if !supports_weights && matches!(self.drawing_tool, DrawingTool::DrawWeight(_)) {
             self.drawing_tool = DrawingTool::DrawWall;
         }
 
@@ -124,7 +126,7 @@ impl eframe::App for PathFinderVisualizerApp {
         let cell_height = 30.0;
         let horizontal_gap = -9.0;
         let vertical_gap = 0.0;
-        let path_finding_algorithms = ["Dijkstra", "BFS", "DFS"];
+        let path_finding_algorithms = ["Dijkstra", "A*", "BFS", "DFS"];
         const CELL_CORNER_RADIUS: f32 = 0.0;
         const CELL_BORDER_WIDTH: f32 = 1.0;
         const CELL_BORDER_COLOR: egui::Color32 = egui::Color32::BLACK;
@@ -401,7 +403,7 @@ impl eframe::App for PathFinderVisualizerApp {
                     ui.end_row();
                 }
 
-                if self.algorithm == "Dijkstra" {
+                if supports_weights {
                     ui.label("Terrain weights:");
                     if ui
                         .add(
@@ -461,6 +463,7 @@ impl eframe::App for PathFinderVisualizerApp {
                             "Dijkstra" => {
                                 Some(Dijkstra.find_path(start, end, &self.matrix, &self.weights))
                             }
+                            "A*" => Some(AStar.find_path(start, end, &self.matrix, &self.weights)),
                             _ => None,
                         };
 

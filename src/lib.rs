@@ -1,4 +1,3 @@
-#[path = "Algorithms/mod.rs"]
 pub mod algorithms;
 pub mod grid;
 pub mod gui;
