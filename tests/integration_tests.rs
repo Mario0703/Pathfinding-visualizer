@@ -7,4 +7,4 @@ mod bfs;
 mod dijkstra;
 
 #[path = "integration/pathfinding_strategy.rs"]
-mod pathfinding_strategy;
+mod neighborg;
