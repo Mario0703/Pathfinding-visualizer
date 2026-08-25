@@ -22,59 +22,65 @@ impl PathfindingAlgorithm for Dijkstra {
     ) -> SearchResult {
         let mut queue = BinaryHeap::<Reverse<(u32, Position)>>::new();
         let mut explored_order = Vec::new();
-
-        let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
-
+        let mut visited: Vec<Vec<bool>> = 
+            graph.iter().map(|row| vec![false; row.len()]).collect();
         let mut distances: Vec<Vec<u32>> =
             graph.iter().map(|row| vec![u32::MAX; row.len()]).collect();
         let mut parents: Vec<Vec<Option<Position>>> =
             graph.iter().map(|row| vec![None; row.len()]).collect();
 
-        distances[start.0][start.1] = 0;
+        let (start_row, start_column) = start;
+        distances[start_row][start_column] = 0;
         queue.push(Reverse((0, start)));
 
         while !queue.is_empty() {
             let Reverse((current_distance, current)) = queue.pop().unwrap();
+            let (current_row, current_coloumn) = current
 
-            if visited[current.0][current.1] {
+            if visited[current_row][current_coloumn] {
                 continue; // Skip already visited nodes
             }
 
-            visited[current.0][current.1] = true; // Mark the current node as visited
+            visited[current_row][current_coloumn] = true; // Mark the current node as visited
             explored_order.push(current); // We have explored this node, so we add it to the explored orderee the shortest or cheapest path.
             if current == end {
-                // we are at the end, build path from end to start using parents, reverse path to get final path as we are starting from the end
-                let mut path = vec![end];
-                let mut position = end;
+                // Follow the parent links from the end back to the start.
+                let mut reconstructed_path = vec![end];
+                let mut current_path_position = end;
 
-                while position != start {
-                    // while we have not reached the start, keep going up the parents to build the path
-                    position =
-                        parents[position.0][position.1].expect("reached node should have a parent");
-                    path.push(position);
+                while current_path_position != start {
+                    let (path_row, path_column) = current_path_position;
+
+                    current_path_position = parents[path_row][path_column]
+                        .expect("Every reached node except the start should have a parent");
+
+                    reconstructed_path.push(current_path_position);
                 }
 
-                path.reverse();
+                // Parent links produced the path in reverse order.
+                reconstructed_path.reverse();
 
                 return SearchResult {
                     explored_order,
-                    path: Some(path),
+                    path: Some(reconstructed_path),
                 };
             }
 
             for neighbor in get_neighbors(current, graph) {
-                if visited[neighbor.0][neighbor.1] {
-                    // Skip already visited neighbors
+                let (neighbor_row, neighbor_column) = neighbor;
+
+                if visited[neighbor_row][neighbor_column] {
                     continue;
                 }
-                let distance_to_neighbor = weights[neighbor.0][neighbor.1]; // Get the weight of the edge to the neighbor
-                let alternative_distance = current_distance + distance_to_neighbor;
 
-                if alternative_distance < distances[neighbor.0][neighbor.1] {
-                    distances[neighbor.0][neighbor.1] = alternative_distance;
-                    parents[neighbor.0][neighbor.1] = Some(current);
+                let neighbor_weight = weights[neighbor_row][neighbor_column];
+                let tentative_distance = current_distance + neighbor_weight;
 
-                    queue.push(Reverse((alternative_distance, neighbor)));
+                if tentative_distance < distances[neighbor_row][neighbor_column] {
+                    distances[neighbor_row][neighbor_column] = tentative_distance;
+                    parents[neighbor_row][neighbor_column] = Some(current);
+
+                    queue.push(Reverse((tentative_distance, neighbor)));
                 }
             }
         }
