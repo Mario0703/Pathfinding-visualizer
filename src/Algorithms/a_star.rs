@@ -1,6 +1,6 @@
 use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
 use crate::CellState::{self};
-use crate::algorithms::{get_neighbors};
+use crate::algorithms::get_neighbors;
 use std::vec;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -23,34 +23,43 @@ impl PathfindingAlgorithm for AStar {
         graph: &[Vec<CellState>],
         weights: &[Vec<u32>],
     ) -> SearchResult {
-        let mut queue = BinaryHeap::<Reverse<(u32, Position)>>::new();
+        // Priority queue that stores positions with their distances; the smallest distance is processed first.
+        let mut priority_queue = BinaryHeap::<Reverse<(u32, Position)>>::new();
 
-        let mut distances: Vec<Vec<u32>> =
+        let mut distances_from_start: Vec<Vec<u32>> =
             graph.iter().map(|row| vec![u32::MAX; row.len()]).collect();
-        distances[start.0][start.1] = 0;
 
-        let mut manhattan_heuristics: Vec<Vec<u32>> =
+        let (start_row, start_col) = start;
+
+        distances_from_start[start_row][start_col] = 0;
+
+        let mut manhattan_distances_to_goal: Vec<Vec<u32>> =
             graph.iter().map(|row| vec![u32::MAX; row.len()]).collect();
-        let start_f_score = distances[start.0][start.1] + manhattan_heuristics[start.0][start.1];
+
+        let start_f_score = distances_from_start[start_row][start_col]
+            + manhattan_distances_to_goal[start_row][start_col];
 
         let mut explored_order = Vec::new();
 
         let mut parents: Vec<Vec<Option<Position>>> =
             graph.iter().map(|row| vec![None; row.len()]).collect();
 
-        queue.push(Reverse((start_f_score, start)));
+        priority_queue.push(Reverse((start_f_score, start)));
 
-        manhattan_heuristics[start.0][start.1] = manhattan_distance_helper(start, end);
+        manhattan_distances_to_goal[start.0][start.1] = manhattan_distance(start, end);
 
         let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
 
-        while !queue.is_empty() {
-            let Reverse((_, current)) = queue.pop().unwrap();
-            visited[current.0][current.1] = true;
+        while !priority_queue.is_empty() {
+            let Reverse((_, current)) = priority_queue.pop().unwrap();
+            let (current_row, current_col) = current;
+
+            visited[current_row][current_col] = true;
+
             explored_order.push(current);
 
             if current == end {
-                let path = reconstruct_path_helper(start, end, &parents);
+                let path = reconstruct_path(start, end, &parents);
 
                 return SearchResult {
                     explored_order,
@@ -58,46 +67,59 @@ impl PathfindingAlgorithm for AStar {
                 };
             }
 
+            let (current_row, current_col) = current;
+            visited[current_row][current_col] = true;
+
             for neighbor in get_neighbors(current, graph) {
-                let distance_from_start_to_neighbor_trough_current =
-                    distances[current.0][current.1] + weights[neighbor.0][neighbor.1];
-                    
+                let (neighbor_row, neighbor_col) = neighbor;
 
-                if distance_from_start_to_neighbor_trough_current < distances[neighbor.0][neighbor.1] {
-                    distances[neighbor.0][neighbor.1] = distance_from_start_to_neighbor_trough_current;
-                    parents[neighbor.0][neighbor.1] = Some(current);
+                let tentative_distance = distances_from_start[current_row][current_col]
+                    + weights[neighbor_row][neighbor_col];
 
-                    let f_score = distance_from_start_to_neighbor_trough_current + manhattan_distance_helper(neighbor, end);
+                if tentative_distance < distances_from_start[neighbor_row][neighbor_col] {
+                    distances_from_start[neighbor_row][neighbor_col] = tentative_distance;
+                    parents[neighbor_row][neighbor_col] = Some(current);
 
-                    manhattan_heuristics[neighbor.0][neighbor.1] = f_score;
+                    let manhattan_distance = manhattan_distance(neighbor, end);
+                    manhattan_distances_to_goal[neighbor_row][neighbor_col] = manhattan_distance;
 
-                    queue.push(Reverse((f_score, neighbor)));
+                    let f_score = tentative_distance + manhattan_distance;
+                    priority_queue.push(Reverse((f_score, neighbor)));
                 }
             }
         }
 
-    SearchResult {
-        explored_order,
-        path: None, // did not finde a path
-    }
+        SearchResult {
+            explored_order,
+            path: None, // did not finde a path
+        }
     }
 }
 
-fn manhattan_distance_helper(current_cell: Position, end_cell: Position) -> u32 {
-    (current_cell.0.abs_diff(end_cell.0) + current_cell.1.abs_diff(end_cell.1)) as u32
+fn manhattan_distance(current: Position, end: Position) -> u32 {
+    let (current_row, current_col) = current;
+    let (end_row, end_col) = end;
+
+    (current_row.abs_diff(end_row) + current_col.abs_diff(end_col)) as u32
 }
 
-fn reconstruct_path_helper(
+fn reconstruct_path(
     start: Position,
     end: Position,
     parents: &[Vec<Option<Position>>],
 ) -> Vec<Position> {
     let mut path = vec![end];
     let mut current = end;
+
     while current != start {
-        current = parents[current.0][current.1].expect("Every path node should have a parent");
-        path.push(current)
+        let (current_row, current_col) = current;
+
+        current = parents[current_row][current_col]
+            .expect("Every path node should have a parent");
+
+        path.push(current);
     }
+
     path.reverse();
     path
 }
