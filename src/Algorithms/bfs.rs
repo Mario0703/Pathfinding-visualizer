@@ -23,15 +23,24 @@ impl PathfindingAlgorithm for BFS {
         _weights: &[Vec<u32>],
     ) -> SearchResult {
         let mut queue = VecDeque::new();
+
         let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
+
         let mut parents: Vec<Vec<Option<Position>>> =
             graph.iter().map(|row| vec![None; row.len()]).collect();
+
         let mut explored_order = Vec::new();
 
-        visited[start.0][start.1] = true;
+        let (start_row, start_column) = start;
+
+        visited[start_row][start_column] = true;
         queue.push_back(start);
 
-        while let Some(current) = queue.pop_front() {
+        while !queue.is_empty() {
+            let current = queue
+                .pop_front()
+                .expect("The queue should contain an element");
+
             explored_order.push(current);
 
             if current == end {
@@ -42,9 +51,11 @@ impl PathfindingAlgorithm for BFS {
             }
 
             for neighbor in get_neighbors(current, graph) {
-                if !visited[neighbor.0][neighbor.1] {
-                    visited[neighbor.0][neighbor.1] = true;
-                    parents[neighbor.0][neighbor.1] = Some(current);
+                let (neighbor_row, neighbor_column) = neighbor;
+
+                if !visited[neighbor_row][neighbor_column] {
+                    visited[neighbor_row][neighbor_column] = true;
+                    parents[neighbor_row][neighbor_column] = Some(current);
                     queue.push_back(neighbor);
                 }
             }
@@ -66,8 +77,11 @@ fn reconstruct_path(
     let mut current = end;
 
     while current != start {
-        current = parents[current.0][current.1]
-            .expect("every discovered node except the start must have a parent");
+        let (current_row, current_column) = current;
+
+        current = parents[current_row][current_column]
+            .expect("Every discovered node except the start must have a parent");
+
         path.push(current);
     }
 
