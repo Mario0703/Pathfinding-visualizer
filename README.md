@@ -12,6 +12,7 @@ The project includes the following pathfinding algorithms:
 The goal of this project is to understand how different algorithms find the shortest path in a graph. Below, you will find instructions on how to use the software.
 The following image shows the software’s GUI.
 <img width="792" height="816" alt="image" src="https://github.com/user-attachments/assets/9bba3aaf-4251-4e5e-aaef-5c2623b31c8a" />
+
 Here, the user has a variety of options to choose from.
 - Create a grid by selecting the number of rows and columns.
 - Reset the grid to its initial state.
