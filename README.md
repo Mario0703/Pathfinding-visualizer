@@ -25,3 +25,5 @@ Here, the user has a variety of options to choose from.
 - Start the pathfinding process.
 - View algorithm information, including its description, time complexity, and space complexity.
 As an example of how to use the software, view the GIF below. It demonstrates how to use Dijkstra’s algorithm to find the shortest path while using walls and weighted nodes, from an arbitrary starting point **A** to an ending point **B**.
+
+![Dijkstra's algorithm pathfinding demonstration](Animation.gif)
