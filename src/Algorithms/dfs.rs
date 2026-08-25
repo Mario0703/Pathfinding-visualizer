@@ -53,6 +53,7 @@ fn dfs(
 
         if !visited[neighbor_row][neighbor_column] {
             if let Some(mut path) = dfs(neighbor, end, graph, visited, explored_order) {
+                // Prepend the current position to the path.
                 path.insert(0, current);
                 return Some(path);
             }
