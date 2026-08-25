@@ -24,7 +24,7 @@ impl PathfindingAlgorithm for DFS {
         let mut visited: Vec<Vec<bool>> = graph.iter().map(|row| vec![false; row.len()]).collect();
 
         let mut explored_order: Vec<Position> = Vec::new();
-        let path = dfs_resursive_helper(start, end, graph, &mut visited, &mut explored_order);
+        let path = dfs(start, end, graph, &mut visited, &mut explored_order);
 
         SearchResult {
             explored_order,
@@ -32,14 +32,16 @@ impl PathfindingAlgorithm for DFS {
         }
     }
 }
-fn dfs_resursive_helper(
+fn dfs(
     current: Position,
     end: Position,
     graph: &[Vec<CellState>],
     visited: &mut Vec<Vec<bool>>,
     explored_order: &mut Vec<Position>,
 ) -> Option<Vec<Position>> {
-    visited[current.0][current.1] = true;
+    let (current_row, current_column) = current;
+
+    visited[current_row][current_column] = true;
     explored_order.push(current);
 
     if current == end {
@@ -47,10 +49,10 @@ fn dfs_resursive_helper(
     }
 
     for neighbor in get_neighbors(current, graph) {
-        if !visited[neighbor.0][neighbor.1] {
-            if let Some(mut path) =
-                dfs_resursive_helper(neighbor, end, graph, visited, explored_order)
-            {
+        let (neighbor_row, neighbor_column) = neighbor;
+
+        if !visited[neighbor_row][neighbor_column] {
+            if let Some(mut path) = dfs(neighbor, end, graph, visited, explored_order) {
                 path.insert(0, current);
                 return Some(path);
             }
