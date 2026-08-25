@@ -25,4 +25,3 @@ fn bfs_finds_a_shortest_path_around_a_wall() {
             .all(|&(row, column)| { grid[row][column] != CellState::Wall })
     );
 }
-
