@@ -1,6 +1,6 @@
 use super::{drawing_manager::DrawingManager, drawing_tool::DrawingTool};
 use crate::animations::PlacementAnimationKind;
-use crate::{CellState, Position, animations::AnimationManager};
+use crate::{animations::AnimationManager, CellState, Position};
 use eframe::egui;
 
 const CELL_WIDTH: f32 = 30.0;
@@ -216,7 +216,7 @@ impl DrawingManager {
         );
 
         if weight > 1 && cell_state != CellState::Wall {
-            paint_weight_label(ui.painter(), rect, weight, cell_state);
+            paint_weight_label(ui.painter(), rect, weight);
         }
     }
 }
@@ -241,23 +241,12 @@ fn weight_color(weight: u32) -> egui::Color32 {
     }
 }
 
-fn paint_weight_label(
-    painter: &egui::Painter,
-    rect: egui::Rect,
-    weight: u32,
-    cell_state: CellState,
-) {
-    let text_color = if cell_state == CellState::Unexplored && weight == 15 {
-        egui::Color32::WHITE
-    } else {
-        egui::Color32::BLACK
-    };
-
+fn paint_weight_label(painter: &egui::Painter, rect: egui::Rect, weight: u32) {
     painter.text(
         rect.center(),
         egui::Align2::CENTER_CENTER,
         weight.to_string(),
         egui::FontId::proportional(12.0),
-        text_color,
+        egui::Color32::BLACK,
     );
 }
