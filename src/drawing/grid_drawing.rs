@@ -11,9 +11,12 @@ const CELL_CORNER_RADIUS: f32 = 0.0;
 const CELL_BORDER_WIDTH: f32 = 1.0;
 const CELL_BORDER_COLOR: egui::Color32 = egui::Color32::BLACK;
 
-pub(super) const COST_5_COLOR: egui::Color32 = egui::Color32::from_rgb(190, 220, 120);
-pub(super) const COST_10_COLOR: egui::Color32 = egui::Color32::from_rgb(210, 155, 80);
-pub(super) const COST_15_COLOR: egui::Color32 = egui::Color32::from_rgb(145, 95, 60);
+pub const COST_5_COLOR: egui::Color32 = egui::Color32::from_rgb(190, 220, 120);
+pub const COST_10_COLOR: egui::Color32 = egui::Color32::from_rgb(210, 155, 80);
+pub const COST_15_COLOR: egui::Color32 = egui::Color32::from_rgb(145, 95, 60);
+pub const LOW_TERRAIN_WEIGHT: u32 = 5;
+pub const MEDIUM_TERRAIN_WEIGHT: u32 = 10;
+pub const HIGH_TERRAIN_WEIGHT: u32 = 15;
 
 impl DrawingManager {
     pub fn show_grid(
@@ -231,9 +234,9 @@ fn cell_color(cell_state: CellState, weight: u32) -> egui::Color32 {
 
 fn weight_color(weight: u32) -> egui::Color32 {
     match weight {
-        5 => COST_5_COLOR,
-        10 => COST_10_COLOR,
-        15 => COST_15_COLOR,
+        LOW_TERRAIN_WEIGHT => COST_5_COLOR,
+        MEDIUM_TERRAIN_WEIGHT => COST_10_COLOR,
+        HIGH_TERRAIN_WEIGHT => COST_15_COLOR,
         _ => egui::Color32::WHITE,
     }
 }

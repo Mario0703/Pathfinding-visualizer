@@ -1,7 +1,10 @@
-use super::{drawing_manager::DrawingManager, drawing_tool::DrawingTool};
+use crate::drawing::{drawing_manager::DrawingManager, drawing_tool::DrawingTool};
 use eframe::egui;
 
-use super::grid_drawing::{COST_5_COLOR, COST_10_COLOR, COST_15_COLOR};
+use super::grid_drawing::{
+    COST_5_COLOR, COST_10_COLOR, COST_15_COLOR, HIGH_TERRAIN_WEIGHT, LOW_TERRAIN_WEIGHT,
+    MEDIUM_TERRAIN_WEIGHT,
+};
 
 impl DrawingManager {
     pub fn show_weight_controls(&mut self, ui: &mut egui::Ui, weights_enabled: bool) {
@@ -10,9 +13,9 @@ impl DrawingManager {
         }
 
         ui.label("Terrain weights:");
-        self.show_weight_button(ui, 5, COST_5_COLOR);
-        self.show_weight_button(ui, 10, COST_10_COLOR);
-        self.show_weight_button(ui, 15, COST_15_COLOR);
+        self.show_weight_button(ui, LOW_TERRAIN_WEIGHT, COST_5_COLOR);
+        self.show_weight_button(ui, MEDIUM_TERRAIN_WEIGHT, COST_10_COLOR);
+        self.show_weight_button(ui, HIGH_TERRAIN_WEIGHT, COST_15_COLOR);
         ui.end_row();
     }
 
