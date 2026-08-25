@@ -1,4 +1,4 @@
-use super::SearchAnimation;
+use crate::animations::SearchAnimation;
 use crate::{CellState, Position, SearchResult};
 use eframe::egui;
 use std::{

@@ -1,4 +1,4 @@
-use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
+use crate::algorithms::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
 use crate::{CellState, algorithms::get_neighbors};
 use std::{cmp::Reverse, collections::BinaryHeap};
 pub struct Dijkstra;

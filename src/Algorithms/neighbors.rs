@@ -1,6 +1,6 @@
 use crate::CellState;
 
-use super::Position;
+use crate::Position;
 
 pub fn get_neighbors(position: Position, graph: &[Vec<CellState>]) -> Vec<Position> {
     let left = (Some(position.0), position.1.checked_sub(1));

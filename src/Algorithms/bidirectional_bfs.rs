@@ -1,4 +1,4 @@
-use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult, get_neighbors};
+use crate::algorithms::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult, get_neighbors};
 use crate::CellState;
 use std::collections::VecDeque;
 

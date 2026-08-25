@@ -1,5 +1,4 @@
 use crate::CellState;
-
 pub type Position = (usize, usize);
 
 #[derive(Clone, Debug, PartialEq, Eq)]

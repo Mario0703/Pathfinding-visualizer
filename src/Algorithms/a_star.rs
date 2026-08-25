@@ -1,4 +1,4 @@
-use super::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
+use crate::algorithms::{AlgorithmInfo, PathfindingAlgorithm, Position, SearchResult};
 use crate::CellState::{self};
 use crate::algorithms::get_neighbors;
 use std::vec;
